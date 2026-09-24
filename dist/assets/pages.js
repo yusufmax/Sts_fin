@@ -4,9 +4,11 @@
   const setLang=next=>{
     lang=next;
     document.documentElement.lang=next;
-    originals.forEach((en,el)=>{el.innerHTML=next==='ru'?el.dataset.ru:en});
+    originals.forEach((en,el)=>{el.innerHTML=next==='ru'?el.dataset.ru:next==='uz'?el.dataset.uz:en});
     document.querySelectorAll('[data-lang]').forEach(btn=>{const active=btn.dataset.lang===next;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active))});
-    document.title=(next==='ru'?document.body.dataset.titleRu:document.body.dataset.titleEn)+' | Strategic Security Systems';
+    document.title=(document.body.dataset[`title${next.charAt(0).toUpperCase()+next.slice(1)}`]||document.body.dataset.titleEn)+' | Strategic Security Systems';
+    document.querySelector('meta[name="description"]').content=document.querySelector('.subhero-lead')?.textContent||'';
+    button.setAttribute('aria-label',next==='ru'?'Открыть меню':next==='uz'?'Menyuni ochish':'Open menu');
     localStorage.setItem('s3-language',next);
   };
   document.querySelectorAll('[data-lang]').forEach(btn=>btn.addEventListener('click',()=>setLang(btn.dataset.lang)));
@@ -15,7 +17,7 @@
   button.addEventListener('click',()=>{const open=document.body.classList.toggle('menu-open');menu.setAttribute('aria-hidden',String(!open));button.setAttribute('aria-expanded',String(open))});
   menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
-  setLang(localStorage.getItem('s3-language')==='ru'?'ru':'en');
+  setLang(['en','ru','uz'].includes(localStorage.getItem('s3-language'))?localStorage.getItem('s3-language'):'en');
   const form=document.querySelector('#enquiry');
   if(form){
     const requested=new URLSearchParams(location.search).get('interest');
@@ -24,10 +26,10 @@
       e.preventDefault();
       const data=new FormData(form);
       const interest=form.elements.interest.selectedOptions[0]?.textContent||'';
-      const labels=lang==='ru'?['Имя','Организация','Рабочая почта','Телефон','Тема','Задача']:['Name','Organization','Work email','Phone','Interest','Requirement'];
+      const labels=lang==='ru'?['Имя','Организация','Рабочая почта','Телефон','Тема','Задача']:lang==='uz'?['Ism','Tashkilot','Ishchi email','Telefon','Mavzu','Vazifa']:['Name','Organization','Work email','Phone','Interest','Requirement'];
       const values=[data.get('name'),data.get('organization'),data.get('email'),data.get('phone')||'—',interest,data.get('message')];
       const body=labels.map((label,i)=>label+': '+values[i]).join('\n');
-      location.href='mailto:info@stsec.uz?subject='+encodeURIComponent(lang==='ru'?'Запрос с сайта S3':'S3 website enquiry')+'&body='+encodeURIComponent(body);
+      location.href='mailto:info@stsec.uz?subject='+encodeURIComponent(lang==='ru'?'Запрос с сайта S3':lang==='uz'?'S3 saytidan murojaat':'S3 website enquiry')+'&body='+encodeURIComponent(body);
     });
   }
 })();

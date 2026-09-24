@@ -1,13 +1,15 @@
-"""Build the bilingual informational pages for Strategic Security Systems."""
+"""Build the multilingual informational pages for Strategic Security Systems."""
 from pathlib import Path
 from html import escape
+import json
 
 OUT = Path(__file__).resolve().parents[1] / 'dist'
+UZ = json.loads((Path(__file__).resolve().parent / 'uz-translations.json').read_text())
 
 
 def t(en, ru, tag='span', cls='', extra=''):
     attrs = f' class="{cls}"' if cls else ''
-    return f'<{tag}{attrs} data-ru="{escape(ru, quote=True)}" {extra}>{en}</{tag}>'
+    return f'<{tag}{attrs} data-ru="{escape(ru, quote=True)}" data-uz="{escape(UZ[en], quote=True)}" {extra}>{en}</{tag}>'
 
 
 def link(label_en, label_ru, href, cls='text-link', extra=''):
@@ -27,9 +29,10 @@ NAV = [
 def shell(slug, title_en, title_ru, description, body):
     links = ''.join(f'<a href="{href}" class="{"active" if href == slug else ""}">{t(en, ru)}</a>' for en, ru, href in NAV)
     mobile = links + f'<a href="contact.html">{t("Contact", "Контакты")}</a>'
-    header = f'''<header class="site-header"><nav class="nav wrap" aria-label="Main navigation"><a class="brand" href="index.html" aria-label="Strategic Security Systems home"><span class="brand-mark"><img src="assets/strategic-logo.svg" alt=""></span><span class="brand-text">STRATEGIC<br>SECURITY SYSTEMS</span></a><div class="nav-links">{links}</div><div class="nav-right"><div class="lang" aria-label="Language"><button type="button" data-lang="en" class="active" aria-pressed="true">EN</button><button type="button" data-lang="ru" aria-pressed="false">RU</button></div><a class="nav-contact" href="contact.html">{t("Contact", "Контакты")} <span aria-hidden="true">↗</span></a><button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button></div></nav></header><div class="mobile-menu" aria-hidden="true">{mobile}</div>'''
+    header = f'''<header class="site-header"><nav class="nav wrap" aria-label="Main navigation"><a class="brand" href="index.html" aria-label="Strategic Security Systems home"><span class="brand-mark"><img src="assets/strategic-logo.svg" alt=""></span><span class="brand-text">STRATEGIC<br>SECURITY SYSTEMS</span></a><div class="nav-links">{links}</div><div class="nav-right"><div class="lang" aria-label="Language"><button type="button" data-lang="en" class="active" aria-pressed="true">EN</button><button type="button" data-lang="ru" aria-pressed="false">RU</button><button type="button" data-lang="uz" aria-pressed="false">UZ</button></div><a class="nav-contact" href="contact.html">{t("Contact", "Контакты")} <span aria-hidden="true">↗</span></a><button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button></div></nav></header><div class="mobile-menu" aria-hidden="true">{mobile}</div>'''
     footer = f'''<footer class="footer"><div class="wrap"><a href="index.html" class="footer-brand">STRATEGIC<br>SECURITY SYSTEMS</a><div class="footer-links"><a href="for-partners.html">{t("For Technology Partners", "Технологическим партнёрам")}</a><a href="expertise.html">{t("Careers & Expertise", "Карьера и экспертиза")}</a><a href="contact.html">{t("Contact", "Контакты")}</a></div><small>{t("Uzbekistan · Established 2024", "Узбекистан · Основана в 2024 году")}</small><a href="mailto:info@stsec.uz">info@stsec.uz ↗</a></div></footer>'''
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1813"><title>{escape(title_en)} | Strategic Security Systems</title><meta name="description" content="{escape(description, quote=True)}"><link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/pages.css"><script defer src="assets/pages.js"></script></head><body data-title-en="{escape(title_en, quote=True)}" data-title-ru="{escape(title_ru, quote=True)}">{header}<main class="subpage">{body}</main>{footer}</body></html>'''
+    title_uz = {'Technology Partners':'Texnologik hamkorlar', 'Selected Experience':'Tanlangan tajriba', 'About S3':'S3 haqida', 'Local Capability':'Mahalliy salohiyat', 'Careers & Expertise':'Karyera va ekspertiza', 'News & Publications':'Yangiliklar va maqolalar', 'Contact':'Aloqa'}.get(title_en, UZ.get(title_en, title_en))
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1813"><title>{escape(title_en)} | Strategic Security Systems</title><meta name="description" content="{escape(description, quote=True)}"><link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/pages.css"><script defer src="assets/pages.js"></script></head><body data-title-en="{escape(title_en, quote=True)}" data-title-ru="{escape(title_ru, quote=True)}" data-title-uz="{escape(title_uz, quote=True)}">{header}<main class="subpage">{body}</main>{footer}</body></html>'''
 
 
 def hero(kicker_en, kicker_ru, title_en, title_ru, lead_en, lead_ru, image=None, actions=''):
@@ -175,8 +178,8 @@ fields=[('name','Your name','Ваше имя','text','name'),('organization','Or
 for name,en,ru,typ,auto in fields:
     required='' if name=='phone' else 'required'
     body+=f'<label class="form-field">{t(en,ru)}<input name="{name}" type="{typ}" autocomplete="{auto}" {required}></label>'
-body+='<label class="form-field">'+t('Area of interest','Интересующее направление')+'<select name="interest" required><option value="" disabled selected data-ru="Выберите тему обращения">Select an enquiry type</option>'
-for key,en,ru in options: body+=f'<option value="{key}" data-ru="{escape(ru, quote=True)}">{en}</option>'
+body+='<label class="form-field">'+t('Area of interest','Интересующее направление')+f'<select name="interest" required><option value="" disabled selected data-ru="Выберите тему обращения" data-uz="{escape(UZ["Select an enquiry type"], quote=True)}">Select an enquiry type</option>'
+for key,en,ru in options: body+=f'<option value="{key}" data-ru="{escape(ru, quote=True)}" data-uz="{escape(UZ[en], quote=True)}">{en}</option>'
 body+='</select></label><label class="form-field">'+t('Brief description of the requirement','Краткое описание задачи')+'<textarea name="message" rows="5" required></textarea></label><button class="primary-link" type="submit">'+t('Prepare email','Подготовить письмо')+' <span aria-hidden="true">↗</span></button><p class="form-note">'+t('Submitting opens your email app with the request addressed to info@stsec.uz.','После отправки откроется почтовое приложение с письмом на info@stsec.uz.')+'</p></form></div></section>'
 pages['contact.html']=shell('contact.html','Contact','Контакты','Contact S3 about a technology requirement, consultation, partnership, training or technical support.',body)
 
