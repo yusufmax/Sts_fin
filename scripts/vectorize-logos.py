@@ -6,7 +6,9 @@ import numpy as np
 from PIL import Image
 
 
-ROOT = Path(__file__).resolve().parents[1] / "dist" / "assets"
+BASE = Path(__file__).resolve().parents[1]
+ROOT = BASE / "dist" / "assets"
+SOURCE = BASE / "source-assets"
 
 
 def paths(mask: np.ndarray, epsilon: float = 0.28) -> str:
@@ -27,22 +29,22 @@ def save(name: str, width: int, height: int, layers: list[tuple[str, np.ndarray]
     (ROOT / name).write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img">{body}</svg>')
 
 
-im = np.asarray(Image.open(ROOT / "strategic-logo.png").convert("RGB"))
+im = np.asarray(Image.open(SOURCE / "strategic-logo.png").convert("RGB"))
 dark = np.max(im, axis=2) < 150
 save("strategic-logo.svg", im.shape[1], im.shape[0], [("#171717", dark)])
 
-im = np.asarray(Image.open(ROOT / "dtech-logo.png").convert("RGBA"))
+im = np.asarray(Image.open(SOURCE / "dtech-logo.png").convert("RGBA"))
 red = (im[:, :, 0] > 100) & (im[:, :, 0] > im[:, :, 1] * 1.8) & (im[:, :, 3] > 125)
 black = (np.max(im[:, :, :3], axis=2) < 80) & (im[:, :, 3] > 125)
 white = (np.min(im[:, :, :3], axis=2) > 190) & (im[:, :, 3] > 125)
 save("dtech-logo.svg", im.shape[1], im.shape[0], [("#ba2027", red), ("#151515", black), ("#ffffff", white)])
 
-im = np.asarray(Image.open(ROOT / "near-logo.png").convert("RGBA"))
+im = np.asarray(Image.open(SOURCE / "near-logo.png").convert("RGBA"))
 white = (np.min(im[:, :, :3], axis=2) > 200) & (im[:, :, 3] > 125)
 orange = (im[:, :, 0] > 160) & (im[:, :, 1] < 150) & (im[:, :, 2] < 100) & (im[:, :, 3] > 125)
 save("near-logo.svg", im.shape[1], im.shape[0], [("#ffffff", white), ("#ea5d24", orange)])
 
-im = np.asarray(Image.open(ROOT / "buckeye-logo.jpg").convert("RGB"))
+im = np.asarray(Image.open(SOURCE / "buckeye-logo.jpg").convert("RGB"))
 white = (np.min(im, axis=2) > 75) & ((np.max(im, axis=2) - np.min(im, axis=2)) < 70)
 orange = (im[:, :, 0] > 75) & (im[:, :, 0] > im[:, :, 1] * 1.45) & (im[:, :, 1] > im[:, :, 2] * 1.1)
 save("buckeye-logo.svg", im.shape[1], im.shape[0], [("#f3f2ee", white), ("#c77942", orange)])
