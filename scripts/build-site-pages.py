@@ -17,12 +17,12 @@ def link(label_en, label_ru, href, cls='text-link', extra=''):
 
 
 NAV = [
-    ('About', 'О компании', 'about.html'),
+    ('About Us', 'О компании', 'about.html'),
     ('Solutions', 'Решения', 'solutions.html'),
-    ('Local Capability', 'Местные компетенции', 'local-capability.html'),
-    ('Partners', 'Партнёры', 'partners.html'),
-    ('Projects', 'Проекты', 'projects.html'),
-    ('News', 'Новости', 'news.html'),
+    ('Systems Integration', 'Системная интеграция', 'systems-integration.html'),
+    ('Training & Knowledge Transfer', 'Обучение и передача знаний', 'training.html'),
+    ('Support & FSR Services', 'Поддержка и FSR', 'support.html'),
+    ('Technology Partners', 'Технологические партнёры', 'partners.html'),
 ]
 
 
@@ -30,7 +30,7 @@ def shell(slug, title_en, title_ru, description, body):
     links = ''.join(f'<a href="{href}" class="{"active" if href == slug else ""}">{t(en, ru)}</a>' for en, ru, href in NAV)
     mobile = links + f'<a href="contact.html">{t("Contact", "Контакты")}</a>'
     header = f'''<header class="site-header"><nav class="nav wrap" aria-label="Main navigation"><a class="brand" href="index.html" aria-label="Strategic Security Systems home"><span class="brand-mark"><img src="assets/strategic-logo.svg" alt=""></span><span class="brand-text">STRATEGIC<br>SECURITY SYSTEMS</span></a><div class="nav-links">{links}</div><div class="nav-right"><div class="lang" aria-label="Language"><button type="button" data-lang="en" class="active" aria-pressed="true">EN</button><button type="button" data-lang="ru" aria-pressed="false">RU</button><button type="button" data-lang="uz" aria-pressed="false">UZ</button></div><a class="nav-contact" href="contact.html">{t("Contact", "Контакты")} <span aria-hidden="true">↗</span></a><button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button></div></nav></header><div class="mobile-menu" aria-hidden="true">{mobile}</div>'''
-    footer = f'''<footer class="footer"><div class="wrap"><a href="index.html" class="footer-brand">STRATEGIC<br>SECURITY SYSTEMS</a><div class="footer-links"><a href="for-partners.html">{t("For Technology Partners", "Технологическим партнёрам")}</a><a href="expertise.html">{t("Careers & Expertise", "Карьера и экспертиза")}</a><a href="contact.html">{t("Contact", "Контакты")}</a></div><small>{t("Uzbekistan · Established 2024", "Узбекистан · Основана в 2024 году")}</small><a href="mailto:info@stsec.uz">info@stsec.uz ↗</a></div></footer>'''
+    footer = f'''<footer class="footer"><div class="wrap"><a href="index.html" class="footer-brand">STRATEGIC<br>SECURITY SYSTEMS</a><div class="footer-links"><a href="for-partners.html">{t("For Technology Partners", "Технологическим партнёрам")}</a><a href="expertise.html">{t("Careers & Expertise", "Карьера и экспертиза")}</a><a href="news.html">{t("News", "Новости")}</a><a href="projects.html">{t("Projects", "Проекты")}</a><a href="contact.html">{t("Contact", "Контакты")}</a></div><small>{t("Uzbekistan · Established 2024", "Узбекистан · Основана в 2024 году")}</small><a href="mailto:info@stsec.uz">info@stsec.uz ↗</a></div></footer>'''
     title_uz = {'Technology Partners':'Texnologik hamkorlar', 'Selected Experience':'Tanlangan tajriba', 'About S3':'S3 haqida', 'Local Capability':'Mahalliy salohiyat', 'Careers & Expertise':'Karyera va ekspertiza', 'News & Publications':'Yangiliklar va maqolalar', 'Contact':'Aloqa'}.get(title_en, UZ.get(title_en, title_en))
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c1813"><title>{escape(title_en)} | Strategic Security Systems</title><meta name="description" content="{escape(description, quote=True)}"><link rel="stylesheet" href="assets/styles.css"><link rel="stylesheet" href="assets/pages.css"><script defer src="assets/pages.js"></script></head><body data-title-en="{escape(title_en, quote=True)}" data-title-ru="{escape(title_ru, quote=True)}" data-title-uz="{escape(title_uz, quote=True)}">{header}<main class="subpage">{body}</main>{footer}</body></html>'''
 
@@ -180,8 +180,79 @@ for name,en,ru,typ,auto in fields:
     body+=f'<label class="form-field">{t(en,ru)}<input name="{name}" type="{typ}" autocomplete="{auto}" {required}></label>'
 body+='<label class="form-field">'+t('Area of interest','Интересующее направление')+f'<select name="interest" required><option value="" disabled selected data-ru="Выберите тему обращения" data-uz="{escape(UZ["Select an enquiry type"], quote=True)}">Select an enquiry type</option>'
 for key,en,ru in options: body+=f'<option value="{key}" data-ru="{escape(ru, quote=True)}" data-uz="{escape(UZ[en], quote=True)}">{en}</option>'
-body+='</select></label><label class="form-field">'+t('Brief description of the requirement','Краткое описание задачи')+'<textarea name="message" rows="5" required></textarea></label><button class="primary-link" type="submit">'+t('Prepare email','Подготовить письмо')+' <span aria-hidden="true">↗</span></button><p class="form-note">'+t('Submitting opens your email app with the request addressed to info@stsec.uz.','После отправки откроется почтовое приложение с письмом на info@stsec.uz.')+'</p></form></div></section>'
+body+='</select></label><label class="form-field">'+t('Brief description of the requirement','Краткое описание задачи')+'<textarea name="message" rows="5" minlength="10" required></textarea></label><label class="form-trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><button class="primary-link" type="submit">'+t('Send enquiry','Отправить запрос')+' <span aria-hidden="true">↗</span></button><p class="form-note">'+t('Your enquiry is sent securely to our team.','Ваш запрос будет безопасно отправлен нашей команде.')+'</p><p class="form-status" role="status" aria-live="polite"></p></form></div></section>'
 pages['contact.html']=shell('contact.html','Contact','Контакты','Contact S3 about a technology requirement, consultation, partnership, training or technical support.',body)
+
+
+def t3(en, ru, uz, tag='p', cls=''):
+    return f'<{tag} class="{cls}" data-ru="{escape(ru, quote=True)}" data-uz="{escape(uz, quote=True)}">{escape(en)}</{tag}>'
+
+
+def new_page(slug, title, title_ru, title_uz, lead, lead_ru, lead_uz, image, sections):
+    body = '<section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">STRATEGIC SECURITY SYSTEMS / S3</div>'
+    body += t3(title, title_ru, title_uz, 'h1', 'subhero-title')
+    body += t3(lead, lead_ru, lead_uz, 'p', 'subhero-lead')
+    body += '</div><div class="subhero-media"><img src="assets/' + image + '" alt="" fetchpriority="high"></div></div></section>'
+    for number, section in enumerate(sections, 1):
+        heading, heading_ru, heading_uz, copy, copy_ru, copy_uz = section
+        body += '<section class="content-section section-pad"><div class="wrap editorial-grid"><div class="subsection-head"><span class="kicker">' + f'{number:02d} / S3' + '</span>'
+        body += t3(heading, heading_ru, heading_uz, 'h2', 'subsection-title') + '</div><div class="prose-stack">'
+        body += t3(copy, copy_ru, copy_uz) + '</div></div></section>'
+    body += '<section class="statement-section section-pad"><div class="wrap">' + t3('Let us discuss the operational requirement.', 'Обсудим вашу практическую задачу.', 'Amaliy ehtiyojingizni muhokama qilaylik.', 'h2', 'statement') + '<a class="primary-link" href="contact.html?interest=requirement">' + t('Contact S3', 'Связаться с S3') + ' ↗</a></div></section>'
+    html = shell(slug, title, title_ru, lead, body)
+    return html.replace('data-title-uz="' + escape(title, quote=True) + '"', 'data-title-uz="' + escape(title_uz, quote=True) + '"')
+
+
+pages['systems-integration.html'] = new_page('systems-integration.html', 'Systems Integration', 'Системная интеграция', 'Tizim integratsiyasi',
+    'Connecting equipment, software, networks and people into solutions designed around operational requirements.',
+    'Объединяем оборудование, программное обеспечение, сети и людей в решения, отвечающие практическим задачам.',
+    'Uskunalar, dasturiy ta’minot, tarmoqlar va mutaxassislarni amaliy talablarga mos yechimlarga birlashtiramiz.', 'engineering-workshop.webp', [
+    ('Requirements & Architecture', 'Требования и архитектура', 'Talablar va arxitektura',
+     'We begin with the customer’s objectives, existing infrastructure and technical constraints. S3 then coordinates solution architecture with relevant technology providers.',
+     'Начинаем с целей заказчика, существующей инфраструктуры и технических ограничений. Затем S3 совместно с поставщиками координирует архитектуру решения.',
+     'Buyurtmachi maqsadlari, mavjud infratuzilma va texnik cheklovlardan boshlaymiz. S3 tegishli texnologiya yetkazib beruvchilari bilan yechim arxitekturasini muvofiqlashtiradi.'),
+    ('Integration & Implementation', 'Интеграция и внедрение', 'Integratsiya va joriy etish',
+     'Our work brings together selected components and, where applicable, connects them with existing systems. We coordinate configuration, testing and implementation support.',
+     'Объединяем выбранные компоненты и, при необходимости, подключаем их к существующим системам. Координируем настройку, испытания и поддержку внедрения.',
+     'Tanlangan qismlarni birlashtiramiz va kerak bo‘lsa mavjud tizimlarga ulaymiz. Sozlash, sinov va joriy etish jarayonini muvofiqlashtiramiz.'),
+    ('Lifecycle Thinking', 'Подход на весь жизненный цикл', 'Butun hayotiy siklga yondashuv',
+     'An integrated system remains useful when users understand it and support is available. Training, documentation and partner-backed maintenance arrangements are planned around each engagement.',
+     'Система приносит пользу, когда пользователи понимают её работу и доступна поддержка. Обучение, документация и поддержка партнёров определяются для каждого проекта.',
+     'Tizim foydali bo‘lishi uchun foydalanuvchilar uni tushunishi va yordam mavjud bo‘lishi kerak. O‘qitish, hujjatlar va hamkorlar yordami har bir loyiha uchun belgilanadi.')])
+
+pages['training.html'] = new_page('training.html', 'Training & Knowledge Transfer', 'Обучение и передача знаний', 'O‘qitish va bilim almashish',
+    'Practical training helps teams operate, administer and maintain the systems they use.',
+    'Практическое обучение помогает командам эксплуатировать, администрировать и поддерживать свои системы.',
+    'Amaliy o‘qitish jamoalarga foydalanadigan tizimlarini boshqarish va ularga xizmat ko‘rsatishda yordam beradi.', 'technical-team.webp', [
+    ('Operator Training', 'Обучение операторов', 'Operatorlarni o‘qitish',
+     'S3 provides training focused on day-to-day use, operating procedures and the capabilities of the delivered solution.',
+     'S3 проводит обучение повседневному использованию, рабочим процедурам и возможностям внедрённого решения.',
+     'S3 joriy etilgan yechimdan kundalik foydalanish, ish tartibi va imkoniyatlari bo‘yicha o‘qitadi.'),
+    ('Technical & Maintenance Training', 'Техническое обучение', 'Texnik va xizmat ko‘rsatish bo‘yicha o‘qitish',
+     'Technical sessions address administration, basic diagnostics, maintenance practices and coordination with the relevant technology partner.',
+     'Технические занятия охватывают администрирование, базовую диагностику, обслуживание и взаимодействие с соответствующим технологическим партнёром.',
+     'Texnik mashg‘ulotlar boshqaruv, dastlabki diagnostika, xizmat ko‘rsatish va tegishli texnologiya hamkori bilan hamkorlikni qamrab oladi.'),
+    ('Train-the-Trainer', 'Подготовка инструкторов', 'Trenerlarni tayyorlash',
+     'Train-the-Trainer support helps selected customer personnel share system knowledge within their own organization. Scope and materials are agreed for each engagement.',
+     'Подготовка инструкторов помогает специалистам заказчика передавать знания внутри своей организации. Объём и материалы согласовываются для каждого проекта.',
+     'Trenerlarni tayyorlash buyurtmachi mutaxassislariga bilimni o‘z tashkilotida ulashishga yordam beradi. Hajm va materiallar har bir loyiha uchun kelishiladi.')])
+
+pages['support.html'] = new_page('support.html', 'Support & FSR Services', 'Поддержка и услуги FSR', 'Yordam va FSR xizmatlari',
+    'Technical assistance and local expertise help sustain integrated systems after implementation.',
+    'Техническая помощь и местная экспертиза поддерживают интегрированные системы после внедрения.',
+    'Texnik yordam va mahalliy tajriba integratsiyalashgan tizimlarni joriy etishdan keyin qo‘llab-quvvatlaydi.', 'radio-detail.webp', [
+    ('Technical Assistance', 'Техническая помощь', 'Texnik yordam',
+     'S3 supports troubleshooting, issue coordination and technical questions relating to solutions it delivers, together with relevant technology partners.',
+     'S3 помогает с диагностикой, координацией вопросов и техническими консультациями по поставленным решениям совместно с соответствующими партнёрами.',
+     'S3 tegishli hamkorlar bilan birga yetkazib berilgan yechimlar bo‘yicha nosozliklarni aniqlash, masalalarni muvofiqlashtirish va texnik savollarga yordam beradi.'),
+    ('Field Service Representatives', 'Выездные технические специалисты', 'Joylardagi texnik mutaxassislar',
+     'Where agreed, our Field Service Representative model gives customers access to specialists who provide local technical assistance, training support and knowledge exchange.',
+     'По договорённости модель FSR предоставляет заказчикам доступ к специалистам для местной технической помощи, поддержки обучения и обмена знаниями.',
+     'Kelishuvga ko‘ra, FSR modeli buyurtmachilarga mahalliy texnik yordam, o‘qitish va bilim almashish uchun mutaxassislardan foydalanish imkonini beradi.'),
+    ('Lifecycle Coordination', 'Поддержка жизненного цикла', 'Hayotiy siklni muvofiqlashtirish',
+     'Maintenance and escalation arrangements depend on the technology and partner agreements. S3 coordinates the local interface and supports continuity of service.',
+     'Обслуживание и порядок эскалации зависят от технологии и договорённостей с партнёрами. S3 координирует местное взаимодействие и непрерывность поддержки.',
+     'Texnik xizmat va murojaat tartibi texnologiya hamda hamkorlik shartlariga bog‘liq. S3 mahalliy aloqani va xizmat davomiyligini muvofiqlashtiradi.')])
 
 for name,content in pages.items():
     (OUT/name).write_text(content)

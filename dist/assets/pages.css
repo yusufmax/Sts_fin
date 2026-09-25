@@ -7,3 +7,6 @@
 .subpage:has(#enquiry) .subhero{padding-bottom:50px!important}
 .subpage:has(#enquiry) .subhero-grid{min-height:0}
 .subpage:has(#enquiry) .contact-page-section{padding-top:65px!important}
+.form-trap{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.form-status{min-height:1.5em;font-size:.9rem;font-weight:600;margin-top:.7rem}
+.enquiry-form button:disabled{opacity:.55;cursor:wait}

@@ -1,7 +1,14 @@
 (()=>{
   const originals=new Map([...document.querySelectorAll('[data-ru]')].map(el=>[el,el.innerHTML]));
-  let lang='en';
+  const server=document.documentElement.dataset.serverLocalized==='true';
+  const routeLang=location.pathname.match(/^\/(en|ru|uz)(?:\/|$)/)?.[1];
+  let lang=server?(routeLang||'en'):('en');
   const setLang=next=>{
+    if(server){
+      const path=location.pathname.replace(/^\/(?:en|ru|uz)(?=\/|$)/,'');
+      location.href='/'+next+(path||'/')+location.search+location.hash;
+      return;
+    }
     lang=next;
     document.documentElement.lang=next;
     originals.forEach((en,el)=>{el.innerHTML=next==='ru'?el.dataset.ru:next==='uz'?el.dataset.uz:en});
@@ -17,19 +24,31 @@
   button.addEventListener('click',()=>{const open=document.body.classList.toggle('menu-open');menu.setAttribute('aria-hidden',String(!open));button.setAttribute('aria-expanded',String(open))});
   menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
-  setLang(['en','ru','uz'].includes(localStorage.getItem('s3-language'))?localStorage.getItem('s3-language'):'en');
+  if(server){
+    document.querySelectorAll('[data-lang]').forEach(btn=>{const active=btn.dataset.lang===lang;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active))});
+  }else setLang(['en','ru','uz'].includes(localStorage.getItem('s3-language'))?localStorage.getItem('s3-language'):'en');
   const form=document.querySelector('#enquiry');
   if(form){
     const requested=new URLSearchParams(location.search).get('interest');
     if(requested){const select=form.elements.interest;if([...select.options].some(o=>o.value===requested))select.value=requested}
-    form.addEventListener('submit',e=>{
+    form.addEventListener('submit',async e=>{
       e.preventDefault();
-      const data=new FormData(form);
-      const interest=form.elements.interest.selectedOptions[0]?.textContent||'';
-      const labels=lang==='ru'?['Имя','Организация','Рабочая почта','Телефон','Тема','Задача']:lang==='uz'?['Ism','Tashkilot','Ishchi email','Telefon','Mavzu','Vazifa']:['Name','Organization','Work email','Phone','Interest','Requirement'];
-      const values=[data.get('name'),data.get('organization'),data.get('email'),data.get('phone')||'—',interest,data.get('message')];
-      const body=labels.map((label,i)=>label+': '+values[i]).join('\n');
-      location.href='mailto:info@stsec.uz?subject='+encodeURIComponent(lang==='ru'?'Запрос с сайта S3':lang==='uz'?'S3 saytidan murojaat':'S3 website enquiry')+'&body='+encodeURIComponent(body);
+      if(!form.reportValidity())return;
+      const button=form.querySelector('button[type="submit"]');
+      const status=form.querySelector('.form-status');
+      button.disabled=true;
+      status.textContent=lang==='ru'?'Отправляем запрос…':lang==='uz'?'Murojaat yuborilmoqda…':'Sending your enquiry…';
+      const payload=Object.fromEntries(new FormData(form).entries());
+      payload.locale=lang;
+      try{
+        const response=await fetch('/api/contact',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+        const result=await response.json();
+        if(!response.ok)throw new Error(result.error||'delivery_failed');
+        status.textContent=lang==='ru'?'Запрос получен. Наша команда свяжется с вами.':lang==='uz'?'Murojaat qabul qilindi. Jamoamiz siz bilan bog‘lanadi.':'Enquiry received. Our team will be in touch.';
+        form.reset();
+      }catch{
+        status.textContent=lang==='ru'?'Не удалось отправить запрос. Попробуйте ещё раз или напишите на info@stsec.uz.':lang==='uz'?'Murojaat yuborilmadi. Qayta urinib ko‘ring yoki info@stsec.uz manziliga yozing.':'Could not send your enquiry. Please retry or email info@stsec.uz.';
+      }finally{button.disabled=false}
     });
   }
 })();

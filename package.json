@@ -1,0 +1,21 @@
+{
+  "name": "marufaka-sayt",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "python3 scripts/build-site-pages.py && node scripts/build-worker.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.chatgpt-team.site/54fc941e-d276-4f15-aa85-a3cddeee4729/appgprj_6ab4f0caec68819189e251f5fe5d47b0.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.3"
+  }
+}
