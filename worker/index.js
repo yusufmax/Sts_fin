@@ -12,13 +12,14 @@ const DEFAULT_NAV = [
   ["Contact", "Контакты", "Aloqa", "contact.html"],
 ].map(([en, ru, uz, href]) => ({ en, ru, uz, href }));
 const DEFAULT_SETTINGS = { contactEmail: "info@stsec.uz", nav: DEFAULT_NAV, googleVerification: "", bingVerification: "", yandexVerification: "" };
+const RETIRED_SLUGS = new Set(["projects.html"]);
 const MAX_JSON = 350000;
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const cleanText = (value, max = 12000) => String(value ?? "").trim().slice(0, max);
 const pathFor = (lang, slug) => `/${lang}/${slug === "index.html" ? "" : slug}`;
-const validSlug = slug => /^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(slug) || slug === "index.html";
+const validSlug = slug => !RETIRED_SLUGS.has(slug) && (/^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(slug) || slug === "index.html");
 const isBuiltin = slug => Object.hasOwn(TEMPLATE_INFO, slug);
 const noStore = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 
@@ -32,7 +33,9 @@ function assetResponse(route) {
 async function getSettings(env) {
   try {
     const row = await env.DB.prepare("SELECT value FROM cms_settings WHERE key = ?").bind("site").first();
-    return { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.value) : {}) };
+    const settings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.value) : {}) };
+    settings.nav = (Array.isArray(settings.nav) ? settings.nav : DEFAULT_NAV).filter(item => !RETIRED_SLUGS.has(item.href));
+    return settings;
   } catch { return DEFAULT_SETTINGS; }
 }
 async function getPage(env, slug) {
@@ -316,7 +319,7 @@ async function adminApi(request, env, route) {
   if (route === "/api/admin/bootstrap" && method === "GET") {
     const settings = await getSettings(env);
     const rows = await env.DB.prepare("SELECT slug, status, updated_at, data FROM cms_pages ORDER BY slug").all();
-    const custom = rows.results.filter(row => !isBuiltin(row.slug) && !row.status.startsWith("redirect:"));
+    const custom = rows.results.filter(row => !isBuiltin(row.slug) && !RETIRED_SLUGS.has(row.slug) && !row.status.startsWith("redirect:"));
     const pages = [
       ...Object.keys(TEMPLATE_INFO).map(slug => {
         const row = rows.results.find(item => item.slug === slug);
@@ -437,7 +440,7 @@ async function sitemap(request, env) {
   try {
     const rows = await env.DB.prepare("SELECT slug,status FROM cms_pages").all();
     const draft = new Set(rows.results.filter(row => row.status !== "published").map(row => row.slug));
-    slugs = [...slugs.filter(slug => !draft.has(slug)), ...rows.results.filter(row => !isBuiltin(row.slug) && row.status === "published").map(row => row.slug)];
+    slugs = [...slugs.filter(slug => !draft.has(slug)), ...rows.results.filter(row => !isBuiltin(row.slug) && !RETIRED_SLUGS.has(row.slug) && row.status === "published").map(row => row.slug)];
   } catch { /* Built-in pages remain indexable during a temporary database outage. */ }
   const origin = new URL(request.url).origin;
   const items = slugs.flatMap(slug => LANGS.map(lang => `<url><loc>${esc(origin + pathFor(lang, slug))}</loc></url>`)).join("");
