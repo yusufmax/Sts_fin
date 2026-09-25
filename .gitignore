@@ -3,3 +3,4 @@ dist/server/
 .dev.vars
 .dev.wrangler.jsonc
 .wrangler/
+.DS_Store
