@@ -1,6 +1,7 @@
 import { connect } from "cloudflare:sockets";
 const SITE_ORIGIN = "https://strategic-security-systems-uz.yusufmax15.chatgpt.site";
-const DEFAULT_ADMIN_ID = "ac2e4f91-6bed-4fbd-92d2-308942fc9823";
+const ADMIN_COOKIE = "__Host-s3_admin";
+const SESSION_MS = 12 * 60 * 60 * 1000;
 const LANGS = ["en", "ru", "uz"];
 const DEFAULT_NAV = [
   ["About Us", "О компании", "Kompaniya haqida", "about.html"],
@@ -44,17 +45,86 @@ async function getPage(env, slug) {
     return row ? { data: JSON.parse(row.data), status: row.status, updatedAt: row.updated_at } : null;
   } catch { return null; }
 }
-function isAdmin(request, env) {
-  const id = request.headers.get("oai-authenticated-user-id");
-  const allowed = (env.CMS_ADMIN_USER_IDS || DEFAULT_ADMIN_ID).split(",").map(value => value.trim());
-  return Boolean(id && allowed.includes(id));
+const encoder = new TextEncoder();
+const toBase64Url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromBase64Url = value => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=")), c => c.charCodeAt(0));
+function equalBytes(left, right) {
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let i = 0; i < left.length; i++) difference |= left[i] ^ right[i];
+  return difference === 0;
 }
-function adminAccess(request, env, page = false) {
-  if (isAdmin(request, env)) return null;
-  if (page && !request.headers.get("oai-authenticated-user-id")) {
-    return Response.redirect(new URL("/signin-with-chatgpt?return_to=/admin", request.url), 302);
+async function sessionKey(env) {
+  if (!env.CMS_SESSION_SECRET) return null;
+  return crypto.subtle.importKey("raw", fromBase64Url(env.CMS_SESSION_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+}
+async function signedSession(env) {
+  const key = await sessionKey(env);
+  if (!key) throw new Error("Admin authentication is not configured");
+  const payload = toBase64Url(encoder.encode(JSON.stringify({ user: "root", expires: Date.now() + SESSION_MS })));
+  const signature = toBase64Url(new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(payload))));
+  return `${payload}.${signature}`;
+}
+async function isAdmin(request, env) {
+  try {
+    const token = request.headers.get("cookie")?.split(";").map(part => part.trim()).find(part => part.startsWith(`${ADMIN_COOKIE}=`))?.slice(ADMIN_COOKIE.length + 1);
+    if (!token || token.length > 1024) return false;
+    const [payload, signature, extra] = token.split(".");
+    if (!payload || !signature || extra || !/^[A-Za-z0-9_-]+$/.test(payload + signature)) return false;
+    const key = await sessionKey(env);
+    if (!key) return false;
+    const expected = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(payload)));
+    if (!equalBytes(expected, fromBase64Url(signature))) return false;
+    const session = JSON.parse(new TextDecoder().decode(fromBase64Url(payload)));
+    return session.user === "root" && Number.isFinite(session.expires) && session.expires > Date.now() && session.expires < Date.now() + SESSION_MS + 60_000;
+  } catch { return false; }
+}
+async function adminAccess(request, env, page = false) {
+  if (await isAdmin(request, env)) return null;
+  if (page) {
+    return new Response(null, { status: 302, headers: { location: new URL("/admin/login", request.url).toString(), ...noStore } });
   }
-  return page ? new Response("Access denied", { status: 403, headers: noStore }) : json({ error: "Access denied" }, 403);
+  return json({ error: "Sign in required" }, 401);
+}
+async function validAdminPassword(password, env) {
+  const [scheme, rounds, salt, expected, extra] = String(env.CMS_ADMIN_PASSWORD_HASH || "").split("$");
+  if (scheme !== "pbkdf2_sha256" || rounds !== "210000" || !salt || !expected || extra || typeof password !== "string" || password.length > 256) return false;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", salt: fromBase64Url(salt), iterations: 210000, hash: "SHA-256" }, key, 256));
+  return equalBytes(actual, fromBase64Url(expected));
+}
+async function loginLimitKey(request) {
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(ip)));
+  return `admin-login:${Array.from(digest.slice(0, 12), byte => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+async function adminLogin(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
+  if (!env.CMS_ADMIN_PASSWORD_HASH || !env.CMS_SESSION_SECRET) return json({ error: "Admin authentication is not configured" }, 503);
+  const key = await loginLimitKey(request);
+  const now = Date.now();
+  const attempts = await env.DB.prepare("SELECT count, reset_at FROM cms_rate_limits WHERE key = ?").bind(key).first();
+  if (attempts && attempts.reset_at > now && attempts.count >= 5) return json({ error: "Too many attempts. Try again in 15 minutes." }, 429);
+  let input;
+  try { input = await bodyJson(request); } catch { return json({ error: "Invalid request" }, 400); }
+  if (input?.username !== "root" || !await validAdminPassword(input?.password, env)) {
+    const reset = now + 15 * 60_000;
+    if (attempts && attempts.reset_at > now) await env.DB.prepare("UPDATE cms_rate_limits SET count = count + 1 WHERE key = ?").bind(key).run();
+    else await env.DB.prepare("INSERT INTO cms_rate_limits (key, count, reset_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = 1, reset_at = excluded.reset_at").bind(key, reset).run();
+    return json({ error: "Incorrect username or password" }, 401);
+  }
+  await env.DB.prepare("DELETE FROM cms_rate_limits WHERE key = ?").bind(key).run();
+  const response = json({ ok: true });
+  response.headers.set("set-cookie", `${ADMIN_COOKIE}=${await signedSession(env)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200`);
+  return response;
+}
+async function adminLogout(request) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
+  const response = json({ ok: true });
+  response.headers.set("set-cookie", `${ADMIN_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
+  return response;
 }
 function sameOrigin(request) {
   const origin = request.headers.get("origin");
@@ -312,7 +382,7 @@ async function contact(request, env) {
 }
 
 async function adminApi(request, env, route) {
-  const denied = adminAccess(request, env);
+  const denied = await adminAccess(request, env);
   if (denied) return denied;
   if (request.method !== "GET" && !sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
   const method = request.method;
@@ -455,11 +525,21 @@ export default {
     if (route === "/api/contact") return contact(request, env);
     if (route === "/api/site-settings") return siteSettings(request, env);
     if (route === "/admin" || route === "/admin/") {
-      const denied = adminAccess(request, env, true);
+      const denied = await adminAccess(request, env, true);
       if (denied) return denied;
       const admin = assetResponse("/admin.html");
       admin.headers.set("cache-control", "no-store");
       return admin;
+    }
+    if (route === "/admin/login") {
+      if (await isAdmin(request, env)) return Response.redirect(new URL("/admin", request.url), 302);
+      const login = assetResponse("/admin-login.html");
+      login.headers.set("cache-control", "no-store");
+      return login;
+    }
+    if (route === "/api/admin/login" || route === "/api/admin/logout") {
+      try { return route.endsWith("/login") ? await adminLogin(request, env) : await adminLogout(request); }
+      catch (error) { console.error("Admin authentication error", String(error)); return json({ error: "Service unavailable" }, 503); }
     }
     if (route.startsWith("/api/admin/")) {
       try { return await adminApi(request, env, route); }

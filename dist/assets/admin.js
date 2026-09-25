@@ -5,6 +5,7 @@
   const state={bootstrap:null,page:null,slug:null,tab:'overview',lang:'en',media:[],settings:null};
   const api=async(path,options={})=>{
     const response=await fetch(path,{credentials:'same-origin',...options});
+    if(response.status===401){location.assign('/admin/login');throw new Error('Session expired')}
     const data=await response.json().catch(()=>({error:'Unexpected server response'}));
     if(!response.ok)throw new Error(data.error||'Request failed');
     return data;
@@ -128,5 +129,6 @@
     catch(error){notice(error.message,true)}
   }
   $('#refresh-submissions').addEventListener('click',loadSubmissions);
+  $('#sign-out').addEventListener('click',async()=>{try{await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin'})}finally{location.assign('/admin/login')}});
   loadBootstrap().then(loadMedia).catch(error=>notice(`Unable to load the content studio: ${error.message}`,true));
 })();

@@ -6,7 +6,7 @@ import json
 root = Path(__file__).resolve().parents[1] / "dist"
 pages = {}
 for path in sorted(root.glob("*.html")):
-    if path.name == "admin.html":
+    if path.name in {"admin.html", "admin-login.html"}:
         continue
     soup = BeautifulSoup(path.read_text(), "html.parser")
     fields = []
