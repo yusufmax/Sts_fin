@@ -28,7 +28,9 @@ const server = new Miniflare({
   r2Buckets: { BUCKET: "s3-media" },
   host: "127.0.0.1",
   port,
-  resourcePersistencePath: dataDirectory,
+  defaultPersistRoot: dataDirectory,
+  d1Persist: true,
+  r2Persist: true,
   unsafeLocalExplorer: false,
   unsafeRegisterWorker: false,
 });
