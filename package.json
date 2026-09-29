@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "python3 scripts/build-site-pages.py && node scripts/build-worker.mjs"
+    "build": "python3 scripts/build-site-pages.py && node scripts/build-worker.mjs",
+    "start:vps": "node scripts/serve-vps.mjs"
   },
   "repository": {
     "type": "git",
@@ -14,6 +15,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "dependencies": {
+    "miniflare": "4.20260730.0"
+  },
   "devDependencies": {
     "drizzle-kit": "^0.31.11",
     "drizzle-orm": "^0.45.3"
