@@ -188,7 +188,11 @@ async function adminLogout(request) {
 }
 function sameOrigin(request) {
   const origin = request.headers.get("origin");
-  return origin === new URL(request.url).origin;
+  const url = new URL(request.url);
+  if (origin === url.origin) return true;
+  return url.protocol === "http:"
+    && request.headers.get("x-forwarded-proto") === "https"
+    && origin === `https://${url.host}`;
 }
 async function bodyJson(request) {
   if (!request.headers.get("content-type")?.startsWith("application/json")) throw new Error("JSON required");
