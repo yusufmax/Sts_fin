@@ -38,3 +38,12 @@ export const rateLimits = sqliteTable("cms_rate_limits", {
   count: integer("count").notNull(),
   resetAt: integer("reset_at").notNull(),
 });
+
+export const articles = sqliteTable("cms_articles", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  data: text("data").notNull(),
+  status: text("status").notNull().default("draft"),
+  publishedAt: text("published_at"),
+  updatedAt: text("updated_at").notNull(),
+});

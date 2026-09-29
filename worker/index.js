@@ -15,6 +15,8 @@ const DEFAULT_NAV = [
 const DEFAULT_SETTINGS = { contactEmail: "info@stsec.uz", nav: DEFAULT_NAV, googleVerification: "", bingVerification: "", yandexVerification: "" };
 const RETIRED_SLUGS = new Set(["projects.html"]);
 const MAX_JSON = 350000;
+const articleSlugValid = slug => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length <= 80;
+const imageUrlValid = src => /^\/(?:media|assets)\/[a-zA-Z0-9._/-]+$/.test(src);
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -28,7 +30,7 @@ function assetResponse(route) {
   const asset = STATIC[route];
   if (!asset) return null;
   const body = asset.text !== undefined ? asset.text : Uint8Array.from(atob(asset.base64), c => c.charCodeAt(0));
-  return new Response(body, { headers: { "content-type": asset.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+  return new Response(body, { headers: { "content-type": asset.type, "cache-control": route.startsWith("/assets/admin") ? "no-store" : "public, max-age=86400", "x-content-type-options": "nosniff" } });
 }
 
 async function getSettings(env) {
@@ -44,6 +46,64 @@ async function getPage(env, slug) {
     const row = await env.DB.prepare("SELECT data, status, updated_at FROM cms_pages WHERE slug = ?").bind(slug).first();
     return row ? { data: JSON.parse(row.data), status: row.status, updatedAt: row.updated_at } : null;
   } catch { return null; }
+}
+async function publishedArticles(env, limit = 24) {
+  try {
+    const rows = await env.DB.prepare("SELECT slug,data,published_at FROM cms_articles WHERE status = 'published' ORDER BY published_at DESC, updated_at DESC LIMIT ?").bind(limit).all();
+    return rows.results.map(row => ({ slug: row.slug, data: JSON.parse(row.data), publishedAt: row.published_at }));
+  } catch { return []; }
+}
+function articleText(article, lang, key) {
+  return article.data.translations?.[lang]?.[key] || article.data.translations?.en?.[key] || "";
+}
+function articleLink(lang, slug) { return `/${lang}/news/${slug}`; }
+function articleCard(article, lang, homepage = false) {
+  const data = article.data, title = esc(articleText(article, lang, "title"));
+  const summary = esc(articleText(article, lang, "summary"));
+  const category = esc(articleText(article, lang, "category") || ({ en: "News", ru: "Новости", uz: "Yangiliklar" }[lang]));
+  const image = data.image ? `<img src="${esc(data.image)}" alt="${esc(articleText(article, lang, "alt"))}" loading="lazy">` : "";
+  const date = data.date ? `<time datetime="${esc(data.date)}">${esc(data.date)}</time>` : "";
+  const href = articleLink(lang, article.slug);
+  if (homepage) return `<a class="news-card cms-news-card" href="${href}"><div class="image">${image}</div><div class="body"><span class="kind">${category} ${date}</span><h3>${title}</h3><p>${summary}</p><span class="read">${({ en: "Read story", ru: "Читать", uz: "O‘qish" }[lang])}<span aria-hidden="true">↗</span></span></div></a>`;
+  return `<article class="publication cms-publication"><a href="${href}">${image}<div><span class="card-no">${category} ${date}</span><h3>${title}</h3><p>${summary}</p><span class="card-link">${({ en: "Read article", ru: "Читать статью", uz: "Maqolani o‘qish" }[lang])} ↗</span></div></a></article>`;
+}
+async function sanitizeArticleHtml(source) {
+  const allowed = new Set(["p", "h2", "h3", "ul", "ol", "li", "strong", "b", "em", "i", "blockquote", "br", "a", "img", "figure", "figcaption"]);
+  const excluded = new Set(["script", "style", "iframe", "object", "embed", "svg", "form", "input", "button"]);
+  const response = new HTMLRewriter().on("*", { element(el) {
+    const tag = el.tagName.toLowerCase();
+    if (excluded.has(tag)) { el.remove(); return; }
+    if (!allowed.has(tag)) { el.removeAndKeepContent(); return; }
+    const href = tag === "a" ? el.getAttribute("href") : null;
+    const src = tag === "img" ? el.getAttribute("src") : null;
+    const alt = tag === "img" ? cleanText(el.getAttribute("alt"), 240) : "";
+    for (const [name] of [...el.attributes]) el.removeAttribute(name);
+    if (tag === "a") {
+      if (!/^https?:\/\/[^\s"'<>]+$/.test(href || "") && !/^\/(?:en|ru|uz)\/[a-zA-Z0-9/_-]+$/.test(href || "")) { el.removeAndKeepContent(); return; }
+      el.setAttribute("href", href);
+      if (href.startsWith("http")) { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+    }
+    if (tag === "img") {
+      if (!imageUrlValid(src || "")) { el.remove(); return; }
+      el.setAttribute("src", src);
+      el.setAttribute("alt", alt);
+      el.setAttribute("loading", "lazy");
+    }
+  } }).transform(new Response(cleanText(source, 30000), { headers: { "content-type": "text/html; charset=utf-8" } }));
+  return response.text();
+}
+async function normalizeArticle(input) {
+  const data = input && typeof input === "object" ? input : {};
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(data.date || "") && !Number.isNaN(Date.parse(`${data.date}T00:00:00Z`)) ? data.date : new Date().toISOString().slice(0, 10);
+  const image = imageUrlValid(data.image || "") ? data.image : "";
+  const translations = Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, {
+    title: cleanText(data.translations?.[lang]?.title, 180),
+    summary: cleanText(data.translations?.[lang]?.summary, 550),
+    bodyHtml: await sanitizeArticleHtml(data.translations?.[lang]?.bodyHtml || ""),
+    category: cleanText(data.translations?.[lang]?.category, 60),
+    alt: cleanText(data.translations?.[lang]?.alt, 240),
+  }])));
+  return { date, image, translations };
 }
 const encoder = new TextEncoder();
 const toBase64Url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -187,6 +247,36 @@ function renderCustomPage(slug, page, lang) {
   const main = `<main class="subpage"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">Strategic Security Systems</div><h1 class="subhero-title">${title}</h1><p class="subhero-lead">${lead}</p></div></div></section>${data.blocks.map(block => renderBlock(block, lang)).join("")}</main>`;
   return shell.replace(/<main class="subpage">[\s\S]*?<\/main>/, main);
 }
+function renderArticlePage(request, article, lang, settings) {
+  const title = articleText(article, lang, "title");
+  const summary = articleText(article, lang, "summary");
+  const category = articleText(article, lang, "category") || ({ en: "News", ru: "Новости", uz: "Yangiliklar" }[lang]);
+  const body = articleText(article, lang, "bodyHtml");
+  const image = article.data.image ? `<div class="subhero-media"><img src="${esc(article.data.image)}" alt="${esc(articleText(article, lang, "alt"))}"></div>` : "";
+  const path = articleLink(lang, article.slug), origin = new URL(request.url).origin;
+  const back = { en: "All news & publications", ru: "Все новости и публикации", uz: "Barcha yangiliklar va maqolalar" }[lang];
+  const main = `<main class="subpage article-page"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">${esc(category)} · <time datetime="${esc(article.data.date)}">${esc(article.data.date)}</time></div><h1 class="subhero-title">${esc(title)}</h1><p class="subhero-lead">${esc(summary)}</p></div>${image}</div></section><section class="content-section section-pad"><div class="wrap article-layout"><a class="text-link" href="/${lang}/news.html">← ${back}</a><div class="article-body">${body}</div></div></section></main>`;
+  const template = STATIC["/news.html"].text.replace(/<main class="subpage">[\s\S]*?<\/main>/, main);
+  return new HTMLRewriter()
+    .on("html", { element(el) { el.setAttribute("lang", lang); el.setAttribute("data-server-localized", "true"); } })
+    .on("title", { element(el) { el.setInnerContent(`${title} | Strategic Security Systems`); } })
+    .on('meta[name="description"]', { element(el) { el.setAttribute("content", summary); } })
+    .on("head", { element(el) {
+      const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${articleLink(code, article.slug)}">`).join("");
+      el.append(`<link rel="canonical" href="${origin}${path}">${alternate}<meta property="og:type" content="article"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(summary)}"><meta property="og:image" content="${origin}${esc(article.data.image || "/assets/engineering-workshop.webp")}"><meta property="og:url" content="${origin}${path}">`, { html: true });
+    } })
+    .on("[data-ru]", { element(el) { if (lang !== "en") el.setInnerContent(el.getAttribute(`data-${lang}`) || el.getAttribute("data-ru") || ""); } })
+    .on("a[href]", { element(el) {
+      const href = el.getAttribute("href");
+      if (href?.startsWith("mailto:")) el.setAttribute("href", `mailto:${settings.contactEmail}`);
+      else if (/^[a-z0-9-]+\.html(?:[?#].*)?$/.test(href || "")) el.setAttribute("href", `/${lang}/${href}`);
+    } })
+    .on('link[href^="assets/"],script[src^="assets/"],img[src^="assets/"]', { element(el) {
+      const key = el.getAttribute("href") ? "href" : "src";
+      el.setAttribute(key, "/" + el.getAttribute(key));
+    } })
+    .transform(new Response(template, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=60", "x-content-type-options": "nosniff" } }));
+}
 function fallbackTitle(slug, lang) {
   if (slug === "index.html") return { en: "Systems Integration in Uzbekistan", ru: "Системная интеграция в Узбекистане", uz: "O‘zbekistonda tizim integratsiyasi" }[lang];
   const name = TEMPLATE_INFO[slug]?.titles?.[lang] || TEMPLATE_INFO[slug]?.title || slug.replace(/\.html$/, "");
@@ -204,7 +294,7 @@ function localizedMetadata(page, slug, lang) {
     ogImage: metadata.ogImage || fallback.ogImage || "/assets/engineering-workshop.webp",
   };
 }
-function renderHtml(request, template, slug, lang, page, settings) {
+function renderHtml(request, template, slug, lang, page, settings, articles = []) {
   const info = TEMPLATE_INFO[slug];
   const metadata = localizedMetadata(page, slug, lang);
   const origin = new URL(request.url).origin;
@@ -244,6 +334,7 @@ function renderHtml(request, template, slug, lang, page, settings) {
     } })
     .on("section", { element(el) { if (hidden.has(String(sectionIndex++))) el.remove(); } })
     .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map(block => renderBlock(block, lang)).join(""), { html: true }); } })
+    .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {
       const href = el.getAttribute("href");
       if (!href) return;
@@ -419,6 +510,47 @@ async function adminApi(request, env, route) {
     const rows = await env.DB.prepare("SELECT * FROM cms_submissions ORDER BY created_at DESC LIMIT 200").all();
     return json(rows.results);
   }
+  if (route === "/api/admin/articles") {
+    if (method === "GET") {
+      const rows = await env.DB.prepare("SELECT id,slug,data,status,published_at,updated_at FROM cms_articles ORDER BY updated_at DESC LIMIT 200").all();
+      return json(rows.results.map(row => ({ id: row.id, slug: row.slug, title: JSON.parse(row.data).translations?.en?.title || row.slug, status: row.status, date: JSON.parse(row.data).date, publishedAt: row.published_at, updatedAt: row.updated_at })));
+    }
+    if (method === "POST") {
+      let input; try { input = await bodyJson(request); } catch { return json({ error: "Invalid data" }, 400); }
+      const slug = cleanText(input.slug, 80);
+      if (!articleSlugValid(slug)) return json({ error: "Use a short URL with lowercase letters, numbers and hyphens" }, 400);
+      const data = await normalizeArticle(input.data);
+      if (!data.translations.en.title) return json({ error: "English title is required" }, 400);
+      const status = input.status === "published" ? "published" : "draft";
+      if (status === "published" && (!data.translations.en.summary || !data.translations.en.bodyHtml)) return json({ error: "Add an English summary and article body before publishing" }, 400);
+      const now = new Date().toISOString(), id = crypto.randomUUID();
+      try { await env.DB.prepare("INSERT INTO cms_articles (id,slug,data,status,published_at,updated_at) VALUES (?,?,?,?,?,?)").bind(id, slug, JSON.stringify(data), status, status === "published" ? now : null, now).run(); }
+      catch (error) { if (String(error).includes("UNIQUE")) return json({ error: "This URL is already in use" }, 409); throw error; }
+      return json({ ok: true, id, slug, status }, 201);
+    }
+  }
+  if (route.startsWith("/api/admin/articles/")) {
+    const id = route.slice("/api/admin/articles/".length);
+    if (!/^[a-f0-9-]{36}$/.test(id)) return json({ error: "Invalid article" }, 400);
+    const row = await env.DB.prepare("SELECT id,slug,data,status,published_at,updated_at FROM cms_articles WHERE id = ?").bind(id).first();
+    if (!row) return json({ error: "Article not found" }, 404);
+    if (method === "GET") return json({ id: row.id, slug: row.slug, data: JSON.parse(row.data), status: row.status, publishedAt: row.published_at, updatedAt: row.updated_at });
+    if (method === "PUT") {
+      let input; try { input = await bodyJson(request); } catch { return json({ error: "Invalid data" }, 400); }
+      const data = await normalizeArticle(input.data);
+      if (!data.translations.en.title) return json({ error: "English title is required" }, 400);
+      const status = input.status === "published" ? "published" : "draft";
+      if (status === "published" && (!data.translations.en.summary || !data.translations.en.bodyHtml)) return json({ error: "Add an English summary and article body before publishing" }, 400);
+      const now = new Date().toISOString();
+      await env.DB.prepare("UPDATE cms_articles SET data = ?, status = ?, published_at = ?, updated_at = ? WHERE id = ?")
+        .bind(JSON.stringify(data), status, status === "published" ? row.published_at || now : null, now, id).run();
+      return json({ ok: true, id, slug: row.slug, status });
+    }
+    if (method === "DELETE") {
+      await env.DB.prepare("DELETE FROM cms_articles WHERE id = ?").bind(id).run();
+      return json({ ok: true });
+    }
+  }
   if (route.startsWith("/api/admin/submissions/") && route.endsWith("/retry") && method === "POST") {
     const id = route.slice("/api/admin/submissions/".length, -"/retry".length);
     if (!/^[a-f0-9-]{36}$/.test(id)) return json({ error: "Invalid enquiry" }, 400);
@@ -435,7 +567,10 @@ async function adminApi(request, env, route) {
   if (route === "/api/admin/media") {
     if (method === "GET") {
       const rows = await env.DB.prepare("SELECT * FROM cms_media ORDER BY uploaded_at DESC LIMIT 200").all();
-      return json(rows.results);
+      const original = Object.entries(STATIC).filter(([path, asset]) => path.startsWith("/assets/") && asset.type.startsWith("image/")).map(([url, asset]) => ({
+        id: url, filename: url.slice("/assets/".length), mime: asset.type, bytes: asset.text ? encoder.encode(asset.text).length : Math.floor(asset.base64.length * 3 / 4), uploaded_at: null, source: "site", url,
+      }));
+      return json([...rows.results.map(row => ({ ...row, source: "upload", url: `/media/${row.id}` })), ...original]);
     }
     if (method === "POST") {
       const data = await request.formData();
@@ -513,7 +648,8 @@ async function sitemap(request, env) {
     slugs = [...slugs.filter(slug => !draft.has(slug)), ...rows.results.filter(row => !isBuiltin(row.slug) && !RETIRED_SLUGS.has(row.slug) && row.status === "published").map(row => row.slug)];
   } catch { /* Built-in pages remain indexable during a temporary database outage. */ }
   const origin = new URL(request.url).origin;
-  const items = slugs.flatMap(slug => LANGS.map(lang => `<url><loc>${esc(origin + pathFor(lang, slug))}</loc></url>`)).join("");
+  const articles = await publishedArticles(env, 500);
+  const items = slugs.flatMap(slug => LANGS.map(lang => `<url><loc>${esc(origin + pathFor(lang, slug))}</loc></url>`)).join("") + articles.flatMap(article => LANGS.map(lang => `<url><loc>${esc(origin + articleLink(lang, article.slug))}</loc></url>`)).join("");
   return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${items}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=600" } });
 }
 
@@ -555,6 +691,14 @@ export default {
     }
     if (route.startsWith("/assets/")) return assetResponse(route) || new Response("Not found", { status: 404 });
     if (route === "/favicon.ico") return assetResponse("/assets/strategic-logo.svg") || new Response("Not found", { status: 404 });
+    const articleMatch = route.match(/^\/(en|ru|uz)\/news\/([a-z0-9-]+)$/);
+    if (articleMatch) {
+      const [, articleLang, articleSlug] = articleMatch;
+      if (!articleSlugValid(articleSlug)) return new Response("Not found", { status: 404 });
+      const row = await env.DB.prepare("SELECT slug,data,published_at FROM cms_articles WHERE slug = ? AND status = 'published'").bind(articleSlug).first();
+      if (!row) return new Response("Not found", { status: 404 });
+      return renderArticlePage(request, { slug: row.slug, data: JSON.parse(row.data), publishedAt: row.published_at }, articleLang, await getSettings(env));
+    }
     const match = route.match(/^\/(en|ru|uz)(?:\/(.*))?$/);
     const lang = match ? match[1] : "en";
     const path = match ? match[2] || "" : route.replace(/^\//, "");
@@ -567,6 +711,7 @@ export default {
     const settings = await getSettings(env);
     const template = isBuiltin(slug) ? STATIC[`/${slug}`]?.text : renderCustomPage(slug, page, lang);
     if (!template) return new Response("Not found", { status: 404 });
-    return renderHtml(request, template, slug, lang, page, settings);
+    const articles = slug === "index.html" || slug === "news.html" ? await publishedArticles(env, slug === "index.html" ? 3 : 24) : [];
+    return renderHtml(request, template, slug, lang, page, settings, articles);
   },
 };
