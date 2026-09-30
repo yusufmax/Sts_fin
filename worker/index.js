@@ -260,7 +260,8 @@ async function normalizedPage(input, builtin) {
       galleryMode: GALLERY_MODES.has(block.galleryMode) ? block.galleryMode : "auto",
     };
   })) : [];
-  return { translations, fields, images, hiddenSections, blocks };
+  const sectionOrder = Array.isArray(data.sectionOrder) ? [...new Set(data.sectionOrder.filter(value => typeof value === "string" && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,40})$/.test(value)))].slice(0, 100) : [];
+  return { translations, fields, images, hiddenSections, blocks, sectionOrder };
 }
 function blockImages(block) {
   if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
@@ -282,12 +283,51 @@ function renderBlock(block, lang, index = 0) {
   const underCaption = layout === "under-caption-left";
   return `<section class="content-section cms-block ${index % 2 ? "cms-block--soft" : ""} cms-block--${layout}"><div class="wrap"><div class="cms-block-grid"><div class="cms-block-heading"><h2 class="subsection-title">${title}</h2>${underCaption ? media : ""}</div><div class="cms-block-copy">${body}</div></div>${underCaption ? "" : media}</div></section>`;
 }
+function sectionSequence(order, sections, blocks) {
+  const available = new Set([...sections.map(id => `s:${id}`), ...blocks.map(block => `b:${block.id}`)]);
+  const selected = (order || []).filter(token => available.has(token));
+  return [...new Set([...selected, ...available])];
+}
+function reorderPageSections(html, page, info, lang) {
+  const open = html.match(/<main\b[^>]*>/i);
+  if (!open) return html;
+  const start = open.index + open[0].length;
+  const end = html.indexOf("</main>", start);
+  if (end < 0) return html;
+  const content = html.slice(start, end);
+  const sectionPattern = /<\/?section\b[^>]*>/gi;
+  const parts = new Map();
+  let match, depth = 0, sectionStart = -1, fallback = 0;
+  while ((match = sectionPattern.exec(content))) {
+    if (!/^<\//.test(match[0])) {
+      if (depth++ === 0) sectionStart = match.index;
+    } else if (depth > 0 && --depth === 0) {
+      const section = content.slice(sectionStart, sectionPattern.lastIndex);
+      const id = section.match(/data-cms-section="(\d+)"/)?.[1];
+      const blockId = section.match(/data-cms-block="([a-z0-9-]+)"/)?.[1];
+      parts.set(blockId ? `b:${blockId}` : `s:${id ?? fallback++}`, section);
+    }
+  }
+  if (!parts.size) return html;
+  const base = (info?.sections || []).map(section => section.id);
+  const sequence = sectionSequence(page?.data?.sectionOrder, base, page?.data?.blocks || []);
+  const ordered = sequence.filter(token => parts.has(token)).map((token, index) => {
+    const section = parts.get(token);
+    if (!token.startsWith("b:")) return section;
+    return section.replace(/class="content-section cms-block(?: cms-block--soft)?/, `class="content-section cms-block${index % 2 ? " cms-block--soft" : ""}`);
+  }).join("");
+  return html.slice(0, start) + ordered + html.slice(end);
+}
 function renderCustomPage(slug, page, lang) {
   const data = page.data;
   const title = esc(data.translations?.[lang]?.title || data.translations?.en?.title || slug);
   const lead = esc(data.translations?.[lang]?.description || data.translations?.en?.description || "");
   const shell = STATIC["/about.html"].text;
-  const main = `<main class="subpage"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">Strategic Security Systems</div><h1 class="subhero-title">${title}</h1><p class="subhero-lead">${lead}</p></div></div></section>${data.blocks.map((block, index) => renderBlock(block, lang, index)).join("")}</main>`;
+  const ordered = sectionSequence(data.sectionOrder, [], data.blocks).map((token, index) => {
+    const block = data.blocks.find(item => `b:${item.id}` === token);
+    return block ? renderBlock(block, lang, index) : "";
+  }).join("");
+  const main = `<main class="subpage"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">Strategic Security Systems</div><h1 class="subhero-title">${title}</h1><p class="subhero-lead">${lead}</p></div></div></section>${ordered}</main>`;
   return shell.replace(/<main class="subpage">[\s\S]*?<\/main>/, main);
 }
 function renderArticlePage(request, article, lang, settings) {
@@ -337,7 +377,7 @@ function localizedMetadata(page, slug, lang) {
     ogImage: metadata.ogImage || fallback.ogImage || "/assets/engineering-workshop.webp",
   };
 }
-function renderHtml(request, template, slug, lang, page, settings, articles = []) {
+async function renderHtml(request, template, slug, lang, page, settings, articles = []) {
   const info = TEMPLATE_INFO[slug];
   const metadata = localizedMetadata(page, slug, lang);
   const origin = new URL(request.url).origin;
@@ -352,7 +392,7 @@ function renderHtml(request, template, slug, lang, page, settings, articles = []
     .on("head", { element(el) {
       const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${pathFor(code, slug)}">`).join("");
       const verification = [["google-site-verification", settings.googleVerification], ["msvalidate.01", settings.bingVerification], ["yandex-verification", settings.yandexVerification]].filter(([, value]) => value).map(([name, value]) => `<meta name="${name}" content="${esc(value)}">`).join("");
-      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=15"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
+      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=16"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
     } })
     .on("body", { element(el) { el.setAttribute("data-title-uz", metadata.title); } })
     .on("[data-i18n],[data-ru]", { element(el) {
@@ -375,8 +415,8 @@ function renderHtml(request, template, slug, lang, page, settings, articles = []
       else if (src) el.setAttribute("src", src);
       if (override?.alt?.[lang]) el.setAttribute("alt", override.alt[lang]);
     } })
-    .on("section", { element(el) { if (hidden.has(String(sectionIndex++))) el.remove(); } })
-    .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index)).join(""), { html: true }); } })
+    .on("section", { element(el) { const id = String(sectionIndex++); if (hidden.has(id)) el.remove(); else el.setAttribute("data-cms-section", id); } })
+    .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index).replace("<section ", `<section data-cms-block="${esc(block.id)}" `)).join(""), { html: true }); } })
     .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {
       const href = el.getAttribute("href");
@@ -392,7 +432,9 @@ function renderHtml(request, template, slug, lang, page, settings, articles = []
       const key = el.getAttribute("href") ? "href" : "src";
       el.setAttribute(key, "/" + el.getAttribute(key));
     } });
-  return rewriter.transform(new Response(template, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } }));
+  const response = rewriter.transform(new Response(template, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } }));
+  if (!info) return response;
+  return new Response(reorderPageSections(await response.text(), page, info, lang), { headers: response.headers });
 }
 
 async function limitContact(env, request) {

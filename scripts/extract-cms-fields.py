@@ -35,7 +35,8 @@ for path in sorted(root.glob("*.html")):
     sections = []
     for index, element in enumerate(soup.select("section")):
         heading = element.find(["h1", "h2", "h3"])
-        sections.append({"id": str(index), "title": heading.get_text(" ", strip=True) if heading else (element.get("id") or "Section")})
+        fallback = element.get("id") or next((name for name in element.get("class", []) if name != "section-pad"), "Section")
+        sections.append({"id": str(index), "title": heading.get_text(" ", strip=True) if heading else fallback.replace("-", " ").title()})
     pages[path.name] = {
         "title": soup.title.get_text(" ", strip=True).split(" | ")[0],
         "titles": {
