@@ -94,6 +94,22 @@ async function sanitizeArticleHtml(source) {
   } }).transform(new Response(cleanText(source, 30000), { headers: { "content-type": "text/html; charset=utf-8" } }));
   return response.text();
 }
+async function sanitizeInlineHtml(source) {
+  const allowed = new Set(["strong", "b", "em", "i", "a", "br"]);
+  const response = new HTMLRewriter().on("*", { element(el) {
+    const tag = el.tagName.toLowerCase();
+    if (["script", "style", "iframe", "object", "embed", "svg", "form", "img"].includes(tag)) { el.remove(); return; }
+    if (!allowed.has(tag)) { el.removeAndKeepContent(); return; }
+    const href = tag === "a" ? el.getAttribute("href") : null;
+    for (const [name] of [...el.attributes]) el.removeAttribute(name);
+    if (tag === "a") {
+      if (!/^https?:\/\/[^\s"'<>]+$/.test(href || "") && !/^\/(?:en|ru|uz)\/[a-zA-Z0-9/_-]+$/.test(href || "")) { el.removeAndKeepContent(); return; }
+      el.setAttribute("href", href);
+      if (href.startsWith("http")) { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+    }
+  } }).transform(new Response(cleanText(source, 20000), { headers: { "content-type": "text/html; charset=utf-8" } }));
+  return response.text();
+}
 async function normalizeArticle(input) {
   const data = input && typeof input === "object" ? input : {};
   const date = /^\d{4}-\d{2}-\d{2}$/.test(data.date || "") && !Number.isNaN(Date.parse(`${data.date}T00:00:00Z`)) ? data.date : new Date().toISOString().slice(0, 10);
@@ -231,6 +247,13 @@ async function normalizedPage(input, builtin) {
       fields[id] = Object.fromEntries(LANGS.map(lang => [lang, cleanText(values[lang], 20000)]));
     }
   }
+  const richFields = {};
+  if (builtin && data.richFields && typeof data.richFields === "object") {
+    for (const [id, values] of Object.entries(data.richFields)) {
+      if (!/^\d{1,4}$/.test(id) || !values || typeof values !== "object") continue;
+      richFields[id] = Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, values[lang] ? await sanitizeInlineHtml(values[lang]) : ""])));
+    }
+  }
   const images = {};
   if (builtin && data.images && typeof data.images === "object") {
     for (const [id, image] of Object.entries(data.images)) {
@@ -261,7 +284,7 @@ async function normalizedPage(input, builtin) {
     };
   })) : [];
   const sectionOrder = Array.isArray(data.sectionOrder) ? [...new Set(data.sectionOrder.filter(value => typeof value === "string" && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,40})$/.test(value)))].slice(0, 100) : [];
-  return { translations, fields, images, hiddenSections, blocks, sectionOrder };
+  return { translations, fields, richFields, images, hiddenSections, blocks, sectionOrder };
 }
 function blockImages(block) {
   if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
@@ -404,8 +427,9 @@ async function renderHtml(request, template, slug, lang, page, settings, article
         return;
       }
       const custom = page?.data?.fields?.[index]?.[lang];
+      const rich = page?.data?.richFields?.[index]?.[lang];
       const value = custom || field[lang] || field.en;
-      el.setInnerContent(custom ? esc(value).replace(/\n/g, "<br>") : value, { html: true });
+      el.setInnerContent(rich || (custom ? esc(value).replace(/\n/g, "<br>") : value), { html: true });
     } })
     .on("img", { element(el) {
       const index = String(imageIndex++);

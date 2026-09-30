@@ -53,11 +53,20 @@ def dtech_paths(mask: np.ndarray) -> str:
     return " ".join(result)
 
 
+red_path = dtech_paths(red)
+black_path = dtech_paths(black)
 (ROOT / "dtech-logo-v2.svg").write_text(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="70 8 666 792" role="img" aria-labelledby="title">'
     '<title id="title">DTECH</title>'
-    f'<path fill="#ba1b1d" fill-rule="evenodd" d="{dtech_paths(red)}"/>'
-    f'<path fill="#090909" fill-rule="evenodd" d="{dtech_paths(black)}"/>'
+    f'<path fill="#ba1b1d" fill-rule="evenodd" d="{red_path}"/>'
+    f'<path fill="#090909" fill-rule="evenodd" d="{black_path}"/>'
+    '</svg>'
+)
+(ROOT / "dtech-logo-horizontal.svg").write_text(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 530 160" role="img" aria-labelledby="title">'
+    '<title id="title">DTECH</title>'
+    f'<path fill="#ba1b1d" fill-rule="evenodd" transform="scale(.244) translate(-84 -22)" d="{red_path}"/>'
+    f'<path fill="#090909" fill-rule="evenodd" transform="translate(185 54) scale(.55) translate(-96 -703)" d="{black_path}"/>'
     '</svg>'
 )
 

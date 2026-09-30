@@ -13,6 +13,9 @@
 .section-order-actions{display:flex;gap:5px}
 .section-order-actions button{min-width:34px;padding:7px 9px}
 .section-order-actions button:disabled{opacity:.4;cursor:default}
+.copy-rich-toolbar{position:static;margin-top:7px}
+.copy-rich-editor{min-height:88px;padding:14px 16px;font-size:14px;line-height:1.6;margin-bottom:6px}
+.copy-rich-editor:focus{border-color:#9ab66e;box-shadow:0 0 0 3px rgba(176,211,108,.18)}
 .section-editor-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:20px}
 .section-editor-head h4{font-size:18px;letter-spacing:-.035em;margin:10px 0 0}
 .section-editor-actions,.section-image-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}

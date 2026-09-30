@@ -29,13 +29,13 @@
     $('#page-list').innerHTML=pages.map(page=>`<button data-slug="${esc(page.slug)}" class="${page.slug===state.slug?'active':''}"><strong>${esc(page.slug==='index.html'?'Homepage · Strategic Security Systems':page.title)}</strong><small>${esc(page.slug)} · ${page.status==='draft'?'Draft':'Published'}</small></button>`).join('');
     $('#page-list').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>openPage(button.dataset.slug)));
   }
-  function blankData(){return{translations:Object.fromEntries(['en','ru','uz'].map(lang=>[lang,{title:'',description:'',ogTitle:'',ogDescription:'',ogImage:''}])),fields:{},images:{},hiddenSections:[],blocks:[],sectionOrder:[]}}
+  function blankData(){return{translations:Object.fromEntries(['en','ru','uz'].map(lang=>[lang,{title:'',description:'',ogTitle:'',ogDescription:'',ogImage:''}])),fields:{},images:{},richFields:{},hiddenSections:[],blocks:[],sectionOrder:[]}}
   async function openPage(slug){
     const request=++state.pageRequest;
     try{const page=await api(`/api/admin/page/${encodeURIComponent(slug)}`);if(request!==state.pageRequest)return;state.page={...page,page:page.page||blankData()};state.slug=slug;state.tab='overview';state.lang='en';renderPageList();renderEditor()}
     catch(error){if(request!==state.pageRequest)return;notice(error.message,true);$('#page-editor').innerHTML=`<div class="empty-state"><div><p>Could not open ${esc(slug)}: ${esc(error.message)}</p><button type="button" class="quiet-button" id="retry-page">Try again</button></div></div>`;$('#retry-page').addEventListener('click',()=>openPage(slug))}
   }
-  const tabLabels={overview:'Page & SEO',copy:'Page text',images:'Images & alt text',sections:'Sections'};
+  const tabLabels={overview:'Page & SEO',copy:'Visual page text',images:'Images & alt text',sections:'Sections'};
   function renderEditor(){
     const page=state.page;if(!page)return;
     const title=page.page.translations?.en?.title||page.manifest?.title||page.slug;
@@ -116,8 +116,23 @@
       if(!page.manifest){container.innerHTML='<p class="help">Add sections in the Sections tab. Their text is managed there.</p>';return}
       const query=`<div class="search-row"><input id="field-search" placeholder="Search text on this page" aria-label="Search page text"></div>`;
       const groups=new Map();for(const field of page.manifest.fields){const name=field.section||'Page';if(!groups.has(name))groups.set(name,[]);groups.get(name).push(field)}
-      container.innerHTML=languageTabs()+`<p class="help">Edit the wording directly. Formatting is handled by the website; no HTML is needed.</p>${query}<div id="copy-groups">${[...groups].map(([name,fields])=>`<details class="section-group"><summary>${esc(name)} · ${fields.length} text fields</summary><div class="group-content">${fields.map(field=>{const value=data.fields?.[field.id]?.[lang]??plain(field[lang]||field.en);return `<div class="copy-field" data-search="${esc((plain(field.en)+' '+field.section).toLowerCase())}"><small>${esc(plain(field.en).slice(0,100)||field.key||'Text')}</small><label class="field">${lang.toUpperCase()} text<textarea data-field="${field.id}">${esc(value)}</textarea></label></div>`}).join('')}</div></details>`).join('')}</div>`;
+      const orderedGroups=[...groups].sort(([a],[b])=>Number(/Navigation \/ footer/i.test(a))-Number(/Navigation \/ footer/i.test(b)));
+      const richTag=tag=>['p','h1','h2','h3','h4'].includes(tag);
+      container.innerHTML=languageTabs()+`<p class="help">Open a section below to edit its text visually. Select words to apply bold, italic or a link. Section layout and typography are kept by the website.</p>${query}<div id="copy-groups">${orderedGroups.map(([name,fields],groupIndex)=>`<details class="section-group" ${groupIndex===0?'open':''}><summary>${esc(name)} · ${fields.length} text fields</summary><div class="group-content">${fields.map(field=>{
+        const plainValue=data.fields?.[field.id]?.[lang]??plain(field[lang]||field.en);
+        const richValue=data.richFields?.[field.id]?.[lang]||(data.fields?.[field.id]?.[lang]?esc(plainValue).replace(/\n/g,'<br>'):lang==='en'?(field.en||''):esc(field[lang]||plain(field.en)));
+        return `<div class="copy-field" data-search="${esc((plain(field.en)+' '+field.section).toLowerCase())}"><small>${esc(plain(field.en).slice(0,100)||field.key||'Text')}</small>${richTag(field.tag)?`<div class="article-body-head"><label id="copy-label-${field.id}">${lang.toUpperCase()} text</label><span>Visual editor</span></div><div class="rich-toolbar copy-rich-toolbar" role="toolbar" aria-label="Text formatting"><button type="button" data-copy-command="bold" title="Bold"><strong>B</strong></button><button type="button" data-copy-command="italic" title="Italic"><em>I</em></button><button type="button" data-copy-link title="Insert link">Link</button><button type="button" data-copy-command="undo" title="Undo">↶</button><button type="button" data-copy-command="redo" title="Redo">↷</button></div><div class="rich-editor copy-rich-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="copy-label-${field.id}" data-rich-field="${field.id}">${richValue}</div>`:`<label class="field">${lang.toUpperCase()} text<textarea data-field="${field.id}">${esc(plainValue)}</textarea></label>`}</div>`}).join('')}</div></details>`).join('')}</div>`;
       container.querySelectorAll('[data-field]').forEach(input=>input.addEventListener('input',()=>{data.fields[input.dataset.field]??={};data.fields[input.dataset.field][lang]=input.value}));
+      container.querySelectorAll('[data-rich-field]').forEach(editor=>{
+        const save=()=>{const id=editor.dataset.richField;data.richFields??={};data.richFields[id]??={};data.richFields[id][lang]=editor.innerHTML;data.fields[id]??={};data.fields[id][lang]=''};
+        editor.addEventListener('input',save);
+        editor.addEventListener('paste',event=>{event.preventDefault();document.execCommand('insertText',false,event.clipboardData.getData('text/plain'))});
+        editor.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.execCommand('insertLineBreak',false);save()}});
+        const toolbar=editor.previousElementSibling;
+        toolbar.querySelectorAll('button').forEach(button=>button.addEventListener('mousedown',event=>event.preventDefault()));
+        toolbar.querySelectorAll('[data-copy-command]').forEach(button=>button.addEventListener('click',()=>{editor.focus();document.execCommand(button.dataset.copyCommand,false);save()}));
+        toolbar.querySelector('[data-copy-link]').addEventListener('click',()=>{const selection=window.getSelection(),range=selection?.rangeCount?selection.getRangeAt(0).cloneRange():null;const url=prompt('Link URL (https:// or a site path)');if(!url)return;if(!/^https?:\/\/[^\s]+$/.test(url)&&!/^\/(en|ru|uz)\/[a-zA-Z0-9/_-]+$/.test(url)){notice('Use an HTTPS link or a site page path.',true);return}editor.focus();if(range){selection.removeAllRanges();selection.addRange(range)}document.execCommand('createLink',false,url);save()});
+      });
       $('#field-search').addEventListener('input',event=>{const q=event.target.value.toLowerCase();container.querySelectorAll('.copy-field').forEach(row=>{row.hidden=!row.dataset.search.includes(q)});container.querySelectorAll('.section-group').forEach(group=>group.open=!!q)});
       bindLanguageTabs();return;
     }
