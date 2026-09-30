@@ -2,7 +2,7 @@
   const $=selector=>document.querySelector(selector);
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const plain=html=>{const node=document.createElement('div');node.innerHTML=html||'';return node.textContent||''};
-  const state={bootstrap:null,page:null,slug:null,tab:'overview',lang:'en',media:[],settings:null};
+  const state={bootstrap:null,page:null,slug:null,tab:'overview',lang:'en',media:[],settings:null,pageRequest:0};
   const api=async(path,options={})=>{
     const response=await fetch(path,{credentials:'same-origin',...options});
     if(response.status===401){location.assign('/admin/login');throw new Error('Session expired')}
@@ -25,13 +25,15 @@
     renderPageList();renderSettings();
   }
   function renderPageList(){
-    $('#page-list').innerHTML=state.bootstrap.pages.map(page=>`<button data-slug="${esc(page.slug)}" class="${page.slug===state.slug?'active':''}"><strong>${esc(page.title)}</strong><small>${esc(page.slug)} · ${page.status==='draft'?'Draft':'Published'}</small></button>`).join('');
+    const pages=[...state.bootstrap.pages].sort((a,b)=>a.slug==='index.html'?-1:b.slug==='index.html'?1:0);
+    $('#page-list').innerHTML=pages.map(page=>`<button data-slug="${esc(page.slug)}" class="${page.slug===state.slug?'active':''}"><strong>${esc(page.slug==='index.html'?'Homepage · Strategic Security Systems':page.title)}</strong><small>${esc(page.slug)} · ${page.status==='draft'?'Draft':'Published'}</small></button>`).join('');
     $('#page-list').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>openPage(button.dataset.slug)));
   }
   function blankData(){return{translations:Object.fromEntries(['en','ru','uz'].map(lang=>[lang,{title:'',description:'',ogTitle:'',ogDescription:'',ogImage:''}])),fields:{},images:{},hiddenSections:[],blocks:[],sectionOrder:[]}}
   async function openPage(slug){
-    try{const page=await api(`/api/admin/page/${encodeURIComponent(slug)}`);state.page={...page,page:page.page||blankData()};state.slug=slug;state.tab='overview';state.lang='en';renderPageList();renderEditor()}
-    catch(error){notice(error.message,true)}
+    const request=++state.pageRequest;
+    try{const page=await api(`/api/admin/page/${encodeURIComponent(slug)}`);if(request!==state.pageRequest)return;state.page={...page,page:page.page||blankData()};state.slug=slug;state.tab='overview';state.lang='en';renderPageList();renderEditor()}
+    catch(error){if(request!==state.pageRequest)return;notice(error.message,true);$('#page-editor').innerHTML=`<div class="empty-state"><div><p>Could not open ${esc(slug)}: ${esc(error.message)}</p><button type="button" class="quiet-button" id="retry-page">Try again</button></div></div>`;$('#retry-page').addEventListener('click',()=>openPage(slug))}
   }
   const tabLabels={overview:'Page & SEO',copy:'Page text',images:'Images & alt text',sections:'Sections'};
   function renderEditor(){
@@ -174,5 +176,5 @@
   }
   $('#refresh-submissions').addEventListener('click',loadSubmissions);
   $('#sign-out').addEventListener('click',async()=>{try{await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin'})}finally{location.assign('/admin/login')}});
-  loadBootstrap().then(loadMedia).catch(error=>notice(`Unable to load the content studio: ${error.message}`,true));
+  loadBootstrap().then(async()=>{await loadMedia();await openPage('index.html')}).catch(error=>notice(`Unable to load the content studio: ${error.message}`,true));
 })();
