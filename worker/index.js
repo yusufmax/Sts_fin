@@ -14,9 +14,11 @@ const DEFAULT_NAV = [
 ].map(([en, ru, uz, href]) => ({ en, ru, uz, href }));
 const DEFAULT_SETTINGS = { contactEmail: "info@stsec.uz", nav: DEFAULT_NAV, googleVerification: "", bingVerification: "", yandexVerification: "" };
 const RETIRED_SLUGS = new Set(["projects.html"]);
-const MAX_JSON = 350000;
+const MAX_JSON = 2_000_000;
 const articleSlugValid = slug => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length <= 80;
 const imageUrlValid = src => /^\/(?:media|assets)\/[a-zA-Z0-9._/-]+$/.test(src);
+const IMAGE_LAYOUTS = new Set(["under-caption-left", "after-center", "after-left", "after-right", "after-full"]);
+const GALLERY_MODES = new Set(["auto", "gallery", "slider"]);
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -194,6 +196,17 @@ function sameOrigin(request) {
     && request.headers.get("x-forwarded-proto") === "https"
     && origin === `https://${url.host}`;
 }
+function safeSvg(source) {
+  if (!/^\s*(?:<\?xml[^>]*>\s*)?<svg[\s>][\s\S]*<\/svg>\s*$/i.test(source)) return false;
+  if (/<\s*\/?\s*(?:script|foreignObject|iframe|object|embed|image|animate|set)\b/i.test(source)) return false;
+  if (/<!DOCTYPE|<!ENTITY|<\?xml-stylesheet|\bon[a-z]+\s*=|javascript:|data:|@import/i.test(source)) return false;
+  const references = [...source.matchAll(/\b(?:href|xlink:href)\s*=\s*(["'])(.*?)\1/gi)];
+  if ([...source.matchAll(/\b(?:href|xlink:href)\s*=/gi)].length !== references.length) return false;
+  if (references.some(([, , value]) => !/^#[a-zA-Z_][\w:.-]*$/.test(value))) return false;
+  const urls = [...source.matchAll(/url\s*\(\s*(["']?)(.*?)\1\s*\)/gi)];
+  if (urls.some(([, , value]) => !/^#[a-zA-Z_][\w:.-]*$/.test(value))) return false;
+  return true;
+}
 async function bodyJson(request) {
   if (!request.headers.get("content-type")?.startsWith("application/json")) throw new Error("JSON required");
   if (Number(request.headers.get("content-length") || 0) > MAX_JSON) throw new Error("Request too large");
@@ -201,7 +214,7 @@ async function bodyJson(request) {
   if (source.length > MAX_JSON) throw new Error("Request too large");
   return JSON.parse(source);
 }
-function normalizedPage(input, builtin) {
+async function normalizedPage(input, builtin) {
   const data = input && typeof input === "object" ? input : {};
   const translations = {};
   for (const lang of LANGS) translations[lang] = {
@@ -228,27 +241,53 @@ function normalizedPage(input, builtin) {
     }
   }
   const hiddenSections = builtin && Array.isArray(data.hiddenSections) ? data.hiddenSections.filter(x => /^\d{1,3}$/.test(String(x))).map(String) : [];
-  const blocks = Array.isArray(data.blocks) ? data.blocks.slice(0, 40).map(block => ({
-    id: /^[a-z0-9-]{1,40}$/.test(block.id || "") ? block.id : crypto.randomUUID(),
-    title: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.title?.[lang], 180)])),
-    body: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.body?.[lang], 12000)])),
-    image: /^\/(?:media|assets)\/[a-zA-Z0-9._/-]+$/.test(block.image || "") ? block.image : "",
-    alt: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.alt?.[lang], 240)])),
+  const blocks = Array.isArray(data.blocks) ? await Promise.all(data.blocks.slice(0, 40).map(async block => {
+    const legacyImage = imageUrlValid(block.image || "") ? [{ id: crypto.randomUUID(), src: block.image, alt: block.alt || {} }] : [];
+    const sourceImages = Array.isArray(block.images) ? block.images : legacyImage;
+    const images = sourceImages.slice(0, 16).filter(image => image && imageUrlValid(image.src || "")).map(image => ({
+      id: /^[a-z0-9-]{1,40}$/.test(image.id || "") ? image.id : crypto.randomUUID(),
+      src: image.src,
+      alt: Object.fromEntries(LANGS.map(lang => [lang, cleanText(image.alt?.[lang], 240)])),
+    }));
+    return {
+      id: /^[a-z0-9-]{1,40}$/.test(block.id || "") ? block.id : crypto.randomUUID(),
+      title: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.title?.[lang], 180)])),
+      body: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.body?.[lang], 12000)])),
+      bodyHtml: Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, await sanitizeArticleHtml(block.bodyHtml?.[lang] || "")]))),
+      images,
+      primaryImageId: images.some(image => image.id === block.primaryImageId) ? block.primaryImageId : images[0]?.id || "",
+      imageLayout: IMAGE_LAYOUTS.has(block.imageLayout) ? block.imageLayout : "under-caption-left",
+      galleryMode: GALLERY_MODES.has(block.galleryMode) ? block.galleryMode : "auto",
+    };
   })) : [];
   return { translations, fields, images, hiddenSections, blocks };
 }
-function renderBlock(block, lang) {
+function blockImages(block) {
+  if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
+  return imageUrlValid(block.image || "") ? [{ id: "legacy", src: block.image, alt: block.alt || {} }] : [];
+}
+function renderBlock(block, lang, index = 0) {
   const title = esc(block.title?.[lang] || block.title?.en || "");
-  const body = esc(block.body?.[lang] || block.body?.en || "").replace(/\n/g, "<br>");
-  const image = block.image ? `<img src="${esc(block.image)}" alt="${esc(block.alt?.[lang] || block.alt?.en || "")}" loading="lazy">` : "";
-  return `<section class="content-section section-pad cms-block"><div class="wrap editorial-grid"><div class="subsection-head"><h2 class="subsection-title">${title}</h2></div><div class="prose-stack"><p>${body}</p>${image}</div></div></section>`;
+  const rich = block.bodyHtml?.[lang] || block.bodyHtml?.en || "";
+  const legacy = esc(block.body?.[lang] || block.body?.en || "").replace(/\n/g, "<br>");
+  const body = rich || (legacy ? `<p>${legacy}</p>` : "");
+  const allImages = blockImages(block);
+  const primary = allImages.find(image => image.id === block.primaryImageId);
+  const images = primary ? [primary, ...allImages.filter(image => image !== primary)] : allImages;
+  const mode = block.galleryMode === "slider" || (block.galleryMode !== "gallery" && images.length >= 5) ? "slider" : "gallery";
+  const layout = IMAGE_LAYOUTS.has(block.imageLayout) ? block.imageLayout : "under-caption-left";
+  const figures = images.map(image => `<figure><img src="${esc(image.src)}" alt="${esc(image.alt?.[lang] || image.alt?.en || "")}" loading="lazy"></figure>`).join("");
+  const labels = { en: ["Previous image", "Next image"], ru: ["Предыдущее изображение", "Следующее изображение"], uz: ["Oldingi rasm", "Keyingi rasm"] }[lang];
+  const media = images.length ? `<div class="cms-block-media cms-block-media--${mode}">${mode === "slider" && images.length > 1 ? `<div class="cms-slider-controls"><button type="button" data-slider-prev aria-label="${labels[0]}">←</button><button type="button" data-slider-next aria-label="${labels[1]}">→</button></div>` : ""}<div class="cms-block-media-track">${figures}</div></div>` : "";
+  const underCaption = layout === "under-caption-left";
+  return `<section class="content-section cms-block ${index % 2 ? "cms-block--soft" : ""} cms-block--${layout}"><div class="wrap"><div class="cms-block-grid"><div class="cms-block-heading"><h2 class="subsection-title">${title}</h2>${underCaption ? media : ""}</div><div class="cms-block-copy">${body}</div></div>${underCaption ? "" : media}</div></section>`;
 }
 function renderCustomPage(slug, page, lang) {
   const data = page.data;
   const title = esc(data.translations?.[lang]?.title || data.translations?.en?.title || slug);
   const lead = esc(data.translations?.[lang]?.description || data.translations?.en?.description || "");
   const shell = STATIC["/about.html"].text;
-  const main = `<main class="subpage"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">Strategic Security Systems</div><h1 class="subhero-title">${title}</h1><p class="subhero-lead">${lead}</p></div></div></section>${data.blocks.map(block => renderBlock(block, lang)).join("")}</main>`;
+  const main = `<main class="subpage"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">Strategic Security Systems</div><h1 class="subhero-title">${title}</h1><p class="subhero-lead">${lead}</p></div></div></section>${data.blocks.map((block, index) => renderBlock(block, lang, index)).join("")}</main>`;
   return shell.replace(/<main class="subpage">[\s\S]*?<\/main>/, main);
 }
 function renderArticlePage(request, article, lang, settings) {
@@ -313,7 +352,7 @@ function renderHtml(request, template, slug, lang, page, settings, articles = []
     .on("head", { element(el) {
       const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${pathFor(code, slug)}">`).join("");
       const verification = [["google-site-verification", settings.googleVerification], ["msvalidate.01", settings.bingVerification], ["yandex-verification", settings.yandexVerification]].filter(([, value]) => value).map(([name, value]) => `<meta name="${name}" content="${esc(value)}">`).join("");
-      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<script defer src="/assets/cms-public.js"></script>`, { html: true });
+      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=15"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
     } })
     .on("body", { element(el) { el.setAttribute("data-title-uz", metadata.title); } })
     .on("[data-i18n],[data-ru]", { element(el) {
@@ -337,7 +376,7 @@ function renderHtml(request, template, slug, lang, page, settings, articles = []
       if (override?.alt?.[lang]) el.setAttribute("alt", override.alt[lang]);
     } })
     .on("section", { element(el) { if (hidden.has(String(sectionIndex++))) el.remove(); } })
-    .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map(block => renderBlock(block, lang)).join(""), { html: true }); } })
+    .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index)).join(""), { html: true }); } })
     .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {
       const href = el.getAttribute("href");
@@ -580,12 +619,20 @@ async function adminApi(request, env, route) {
       const data = await request.formData();
       const file = data.get("file");
       if (!file || typeof file === "string") return json({ error: "Choose a file" }, 400);
-      const allowed = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
-      if (!allowed.includes(file.type) || file.size > 12_000_000) return json({ error: "Only PNG, JPG, WebP, GIF or PDF up to 12 MB" }, 400);
+      const svg = file.type === "image/svg+xml" || /\.svg$/i.test(file.name);
+      const type = svg ? "image/svg+xml" : file.type;
+      const allowed = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml", "application/pdf"];
+      if (!allowed.includes(type) || file.size > 12_000_000 || (svg && file.size > 2_000_000)) return json({ error: "Use PNG, JPG, WebP, GIF, SVG (up to 2 MB) or PDF (up to 12 MB)" }, 400);
+      let body = file.stream();
+      if (svg) {
+        const source = await file.text();
+        if (!safeSvg(source)) return json({ error: "This SVG contains unsupported or unsafe content. Export it as a plain SVG and try again." }, 400);
+        body = source;
+      }
       const id = crypto.randomUUID();
-      await env.BUCKET.put(id, file.stream(), { httpMetadata: { contentType: file.type } });
-      await env.DB.prepare("INSERT INTO cms_media (id,filename,mime,bytes,uploaded_at) VALUES (?,?,?,?,?)").bind(id, cleanText(file.name, 220), file.type, file.size, new Date().toISOString()).run();
-      return json({ id, filename: file.name, mime: file.type, bytes: file.size, url: `/media/${id}` }, 201);
+      await env.BUCKET.put(id, body, { httpMetadata: { contentType: type } });
+      await env.DB.prepare("INSERT INTO cms_media (id,filename,mime,bytes,uploaded_at) VALUES (?,?,?,?,?)").bind(id, cleanText(file.name, 220), type, file.size, new Date().toISOString()).run();
+      return json({ id, filename: file.name, mime: type, bytes: file.size, url: `/media/${id}` }, 201);
     }
   }
   if (route.startsWith("/api/admin/media/") && method === "DELETE") {
@@ -606,7 +653,7 @@ async function adminApi(request, env, route) {
     if (method === "PUT") {
       let input; try { input = await bodyJson(request); } catch { return json({ error: "Invalid data" }, 400); }
       const status = input.status === "draft" ? "draft" : "published";
-      const data = normalizedPage(input.data, isBuiltin(slug));
+      const data = await normalizedPage(input.data, isBuiltin(slug));
       if (!isBuiltin(slug) && !data.translations.en.title) return json({ error: "English title is required" }, 400);
       const nextSlug = input.newSlug || slug;
       if (nextSlug !== slug) {
@@ -631,7 +678,7 @@ async function adminApi(request, env, route) {
       if (slug === "index.html") return json({ error: "The homepage cannot be deleted" }, 400);
       if (isBuiltin(slug)) {
         const page = await getPage(env, slug);
-        const data = page?.data || normalizedPage({}, true);
+        const data = page?.data || await normalizedPage({}, true);
         await env.DB.prepare("INSERT INTO cms_pages (slug,data,status,updated_at) VALUES (?,?,'draft',?) ON CONFLICT(slug) DO UPDATE SET status='draft',updated_at=excluded.updated_at")
           .bind(slug, JSON.stringify(data), new Date().toISOString()).run();
       } else await env.DB.prepare("DELETE FROM cms_pages WHERE slug = ?").bind(slug).run();
@@ -691,7 +738,9 @@ export default {
       const object = await env.BUCKET.get(id);
       if (!object) return new Response("Not found", { status: 404 });
       const type = object.httpMetadata?.contentType || "application/octet-stream";
-      return new Response(object.body, { headers: { "content-type": type, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff", "content-disposition": type === "application/pdf" ? "attachment" : "inline" } });
+      const headers = { "content-type": type, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff", "content-disposition": type === "application/pdf" ? "attachment" : "inline" };
+      if (type === "image/svg+xml") headers["content-security-policy"] = "sandbox; default-src 'none'; style-src 'unsafe-inline'";
+      return new Response(object.body, { headers });
     }
     if (route.startsWith("/assets/")) return assetResponse(route) || new Response("Not found", { status: 404 });
     if (route === "/favicon.ico") return assetResponse("/assets/strategic-logo.svg") || new Response("Not found", { status: 404 });

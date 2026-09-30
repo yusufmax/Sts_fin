@@ -28,4 +28,11 @@
       document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{link.href='mailto:'+settings.contactEmail;link.textContent=link.textContent.replace(/info@stsec\.uz/g,settings.contactEmail)});
     }
   }).catch(()=>{});
+  document.querySelectorAll('.cms-block-media--slider').forEach(media=>{
+    const track=media.querySelector('.cms-block-media-track');
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for(const [selector,direction] of [['[data-slider-prev]',-1],['[data-slider-next]',1]]){
+      media.querySelector(selector)?.addEventListener('click',()=>track.scrollBy({left:direction*track.clientWidth,behavior:reduced?'instant':'smooth'}));
+    }
+  });
 })();
