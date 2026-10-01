@@ -71,6 +71,21 @@ const pathFor = (lang, slug) => `/${lang}/${slug === "index.html" ? "" : slug}`;
 const validSlug = slug => !RETIRED_SLUGS.has(slug) && (/^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(slug) || slug === "index.html");
 const isBuiltin = slug => Object.hasOwn(TEMPLATE_INFO, slug);
 const noStore = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
+// Overrides are stored by element position, so they only apply to the template version they were
+// saved for. Overrides from an older template are kept in the database but not applied; added
+// sections and page metadata do not depend on positions and are kept.
+function forCurrentTemplate(slug, data) {
+  const info = TEMPLATE_INFO[slug];
+  if (!info || !data || typeof data !== "object") return data;
+  const savedFor = data.templateVersion || LEGACY_TEMPLATE_VERSIONS[slug];
+  if (!savedFor || savedFor === info.version) return data;
+  return {
+    translations: data.translations || {}, blocks: Array.isArray(data.blocks) ? data.blocks : [],
+    sectionOrder: (Array.isArray(data.sectionOrder) ? data.sectionOrder : []).filter(token => typeof token === "string" && token.startsWith("b:")),
+    fields: {}, richFields: {}, extraText: {}, images: {}, links: {}, hiddenCards: [], deletedCards: [], deletedLinks: [],
+    cardMedia: {}, cardLinks: {}, hiddenSections: [], deletedSections: [], sectionExtras: {}, templateVersion: info.version,
+  };
+}
 
 function assetResponse(route) {
   const asset = STATIC[route];
@@ -90,7 +105,7 @@ async function getSettings(env) {
 async function getPage(env, slug) {
   try {
     const row = await env.DB.prepare("SELECT data, status, updated_at FROM cms_pages WHERE slug = ?").bind(slug).first();
-    return row ? { data: JSON.parse(row.data), status: row.status, updatedAt: row.updated_at } : null;
+    return row ? { data: forCurrentTemplate(slug, JSON.parse(row.data)), status: row.status, updatedAt: row.updated_at } : null;
   } catch { return null; }
 }
 async function publishedArticles(env, limit = 24) {
@@ -364,7 +379,8 @@ async function normalizedPage(input, builtin, slug = "") {
     };
   })) : [];
   const sectionOrder = Array.isArray(data.sectionOrder) ? [...new Set(data.sectionOrder.filter(value => typeof value === "string" && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,40})$/.test(value)))].slice(0, 100) : [];
-  return { translations, fields, richFields, extraText, images, links, hiddenCards, deletedCards, deletedLinks, cardMedia, cardLinks, hiddenSections, deletedSections, sectionExtras, blocks, sectionOrder };
+  const templateVersion = builtin ? TEMPLATE_INFO[slug]?.version || "" : "";
+  return { translations, fields, richFields, extraText, images, links, hiddenCards, deletedCards, deletedLinks, cardMedia, cardLinks, hiddenSections, deletedSections, sectionExtras, blocks, sectionOrder, templateVersion };
 }
 function blockImages(block) {
   if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
@@ -734,7 +750,7 @@ async function adminApi(request, env, route) {
     const pages = [
       ...Object.keys(TEMPLATE_INFO).map(slug => {
         const row = rows.results.find(item => item.slug === slug);
-        const data = row ? JSON.parse(row.data) : {};
+        const data = row ? forCurrentTemplate(slug, JSON.parse(row.data)) : {};
         const sections = TEMPLATE_INFO[slug].sections.filter(section => !data.deletedSections?.includes(section.id)).map(section => ({ token: `s:${section.id}`, sourceId: section.sourceId, title: section.headingFieldId ? (data.fields?.[section.headingFieldId]?.en || data.richFields?.[section.headingFieldId]?.en?.replace(/<[^>]*>/g, " ") || section.title) : section.title }));
         sections.push(...(data.blocks || []).map(block => ({ token: `b:${block.id}`, title: block.title?.en || "Untitled section" })));
         return { slug, builtin: true, title: TEMPLATE_INFO[slug].title, sections, status: row?.status || "published", updatedAt: row?.updated_at || null };

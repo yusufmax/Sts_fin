@@ -1,0 +1,39 @@
+name: Preview on GitHub Pages
+
+# Publishes the static pages from dist/ to the gh-pages branch so the site can be
+# reviewed at https://<owner>.github.io/<repo>/. Languages switch in the browser;
+# the contact form and the CMS need the full server and do not work in this preview.
+on:
+  push:
+    branches: [main, claude/cool-ride-wxe6ns]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-preview
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect static pages
+        run: |
+          mkdir -p _site
+          cp -r dist/. _site/
+          rm -rf _site/server _site/admin.html _site/admin-login.html _site/assets/admin*
+          touch _site/.nojekyll
+      - name: Publish to gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Preview of ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

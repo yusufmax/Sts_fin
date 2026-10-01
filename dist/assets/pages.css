@@ -11,3 +11,20 @@
 .form-status{min-height:1.5em;font-size:.9rem;font-weight:600;margin-top:.7rem}
 .enquiry-form button:disabled{opacity:.55;cursor:wait}
 .cms-publication a{color:inherit;text-decoration:none;display:block;height:100%}.cms-publication .card-link{margin-top:22px}.cms-publication:hover{background:#fff;box-shadow:0 15px 40px rgba(25,45,28,.1)}.cms-publication img{object-fit:cover!important;background:#d4dbd1!important;padding:0!important}.article-layout{display:grid;grid-template-columns:220px minmax(0,790px);gap:clamp(35px,7vw,115px);align-items:start}.article-layout>.text-link{position:sticky;top:120px;font-size:13px;font-weight:800;text-decoration:none;color:#426446}.article-body{font-size:clamp(18px,1.65vw,22px);line-height:1.75;color:#2f4434;overflow-wrap:anywhere}.article-body p:first-child{font-size:1.12em;color:#1b2e22}.cms-news-card{color:inherit;text-decoration:none}.cms-news-card .image:empty{background:#d7e2d3}.article-page .subhero-title{font-size:clamp(50px,5.5vw,88px)}@media(max-width:767px){.article-layout{display:block}.article-layout>.text-link{display:inline-block;position:static;margin-bottom:40px}.article-body{font-size:18px}}
+
+/* Spacing for the longer copy from the content document (existing blocks only) */
+.subpage .action-row{display:flex;flex-wrap:wrap;align-items:center;gap:18px 30px}
+.cta-section .action-row,.statement-section .action-row{margin-top:34px}
+.subsection-head .section-intro+.section-intro{margin-top:14px}
+.prose-stack .clean-list{margin:-14px 0 40px}
+.card-grid+.prose-stack{margin-top:56px}
+.info-card p+p{margin-top:12px}
+.detail-section .clean-list{margin:4px 0 20px}
+.detail-section .clean-list li{border-top-color:rgba(237,247,231,.18);color:#e0e9db;font-size:16px}
+.partner-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:767px){.partner-grid.two{grid-template-columns:1fr}}
+.fact-grid strong [data-cms-copy]{display:inline;margin:0;font:inherit;letter-spacing:inherit;text-transform:none;color:inherit}
+.form-field.is-invalid input,.form-field.is-invalid select,.form-field.is-invalid textarea{border-color:#ff9c8c;box-shadow:0 0 0 2px rgba(255,156,140,.14)}
+.field-error{display:block;margin-top:8px;color:#ffb8ab;font-size:12px;font-weight:600;letter-spacing:0;text-transform:none}
+.form-status.is-success{color:#d7ed62}
+.form-status.is-error{color:#ffb8ab}

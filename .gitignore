@@ -4,3 +4,4 @@ dist/server/
 .dev.wrangler.jsonc
 .wrangler/
 .DS_Store
+__pycache__/
