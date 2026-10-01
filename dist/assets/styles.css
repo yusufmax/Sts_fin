@@ -51,3 +51,23 @@
 @media(max-width:1050px){.nav-links,.nav-contact{display:none}.menu-button{display:block}}
 @media(max-width:767px){.hero-copy{min-height:0;padding-top:125px}.hero h1{font-size:clamp(49px,11.8vw,70px);margin:26px 0}.hero-service-line{margin-top:24px}.hero-actions{align-items:stretch}.hero-actions .primary-link,.hero-actions .secondary-link{width:100%;justify-content:space-between}.home-capability-grid{grid-template-columns:1fr}.home-capability-media{height:340px;border-radius:18px}.contact-paths{margin-top:10px}.footer-links{margin-top:22px}.footer-links a{margin:0}}
 .menu-open .mobile-menu{background:#0c1613}
+
+/* Homepage copy from the content document, laid out in the existing blocks */
+.home-capability .section-intro{margin:0 0 18px}
+.home-capability .section-title+.section-intro{margin-top:32px}
+.home-capability .section-intro:last-of-type{margin-bottom:32px}
+.bento-card .text-link{margin-top:24px}
+.story-sticky p+p{margin-top:14px}
+.story-sticky .text-link{margin-top:30px;color:#e5f0dd}
+.map-intro{max-width:540px}
+.map-intro .section-intro{margin:0 0 16px}
+.map-intro .text-link{margin-top:12px;color:#e5f0dd}
+.accordion-item:not(:has(.acc-logo)) div{margin-top:auto}
+.scrub-section .kicker{margin-bottom:36px}
+.scrub-section p.scrub-follow{font-size:clamp(18px,1.5vw,22px);line-height:1.55;letter-spacing:-.02em;font-weight:500;max-width:900px;margin-top:44px}
+.news:has(.news-grid:empty){display:none}
+.contact-copy .section-title+.email{margin-top:45px}
+.contact .section-title{font-size:clamp(52px,6.4vw,104px)}
+.bento-card h3{font-size:clamp(26px,2.5vw,42px)}
+/* The CMS anchor added to every section must not take a cell in the hero grid */
+.hero>.cms-section-anchor{position:absolute;top:-110px;left:0}
