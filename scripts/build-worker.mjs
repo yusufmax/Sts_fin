@@ -11,6 +11,11 @@ const { ru, uz } = vm.runInNewContext(`${localeSource}\n({ru,uz})`);
 const extracted = spawnSync("python3", [path.join(root, "scripts/extract-cms-fields.py")], { encoding: "utf8" });
 if (extracted.status !== 0) throw new Error(extracted.stderr || "Could not extract page fields");
 const manifest = JSON.parse(extracted.stdout);
+const annotatedPages = {};
+for (const [slug, page] of Object.entries(manifest)) {
+  annotatedPages[`/${slug}`] = page.html;
+  delete page.html;
+}
 for (const [slug, page] of Object.entries(manifest)) {
   if (slug !== "index.html") continue;
   for (const field of page.fields) {
@@ -37,7 +42,7 @@ function walk(directory) {
       const route = "/" + path.relative(dist, file).split(path.sep).join("/");
       const type = mime(path.extname(file));
       assets[route] = type.startsWith("text/") || type.startsWith("application/json")
-        ? { type, text: fs.readFileSync(file, "utf8") }
+        ? { type, text: annotatedPages[route] ?? fs.readFileSync(file, "utf8") }
         : { type, base64: fs.readFileSync(file).toString("base64") };
     }
   }

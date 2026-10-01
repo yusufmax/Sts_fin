@@ -19,6 +19,50 @@ const articleSlugValid = slug => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug
 const imageUrlValid = src => /^\/(?:media|assets)\/[a-zA-Z0-9._/-]+$/.test(src);
 const IMAGE_LAYOUTS = new Set(["under-caption-left", "after-center", "after-left", "after-right", "after-full"]);
 const GALLERY_MODES = new Set(["auto", "gallery", "slider"]);
+const CARD_MODES = new Set(["auto", "tiles", "ribbon"]);
+const colorValid = value => /^#[0-9a-fA-F]{6}$/.test(value || "");
+const safeId = value => /^[a-z0-9-]{1,50}$/.test(value || "") ? value : crypto.randomUUID();
+function normalizeLinkTarget(link, allowNone = false) {
+  if (!link || typeof link !== "object") return { type: allowNone ? "none" : "page", page: "contact.html" };
+  if (allowNone && link.type === "none") return { type: "none" };
+  if (link.type === "page" && validSlug(link.page)) return { type: "page", page: link.page };
+  if (link.type === "section" && validSlug(link.page) && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,50})$/.test(link.section || "")) return { type: "section", page: link.page, section: link.section };
+  const url = cleanText(link.url, 500);
+  if (link.type === "url" && (/^https?:\/\/[^\s"'<>]+$/.test(url) || /^mailto:[^\s"'<>@]+@[^\s"'<>@]+$/.test(url) || /^#[a-zA-Z0-9_-]+$/.test(url))) return { type: "url", url };
+  return { type: allowNone ? "none" : "page", page: "contact.html" };
+}
+async function normalizedSectionExtras(input) {
+  const extras = input && typeof input === "object" ? input : {};
+  return {
+    buttons: (Array.isArray(extras.buttons) ? extras.buttons : []).map(button => ({
+      id: safeId(button.id), hidden: button.hidden === true,
+      text: Object.fromEntries(LANGS.map(lang => [lang, cleanText(button.text?.[lang], 100)])),
+      color: colorValid(button.color) ? button.color : "#dff48c",
+      textColor: colorValid(button.textColor) ? button.textColor : "#182820",
+      link: normalizeLinkTarget(button.link),
+    })),
+    cards: await Promise.all((Array.isArray(extras.cards) ? extras.cards : []).map(async card => ({
+      id: safeId(card.id), hidden: card.hidden === true,
+      title: Object.fromEntries(LANGS.map(lang => [lang, cleanText(card.title?.[lang], 180)])),
+      bodyHtml: Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, await sanitizeArticleHtml(card.bodyHtml?.[lang] || "")]))),
+      image: imageUrlValid(card.image || "") ? card.image : "",
+      link: normalizeLinkTarget(card.link, true),
+    }))),
+    images: (Array.isArray(extras.images) ? extras.images : []).filter(image => image && imageUrlValid(image.src || "")).map(image => ({ id: safeId(image.id), src: image.src, alt: Object.fromEntries(LANGS.map(lang => [lang, cleanText(image.alt?.[lang], 240)])) })),
+    imageMode: GALLERY_MODES.has(extras.imageMode) ? extras.imageMode : "auto",
+    cardMode: CARD_MODES.has(extras.cardMode) ? extras.cardMode : "auto",
+    theme: ["auto", "light", "soft", "dark"].includes(extras.theme) ? extras.theme : "auto",
+    cardOrder: Array.isArray(extras.cardOrder) ? extras.cardOrder.filter(id => /^\d{1,4}$/.test(String(id))).map(String) : [],
+    buttonOrder: Array.isArray(extras.buttonOrder) ? extras.buttonOrder.filter(id => /^\d{1,4}$/.test(String(id))).map(String) : [],
+  };
+}
+function sectionAnchor(token) { return token.startsWith("s:") ? `cms-section-${token.slice(2)}` : `cms-block-${token.slice(2)}`; }
+function targetHref(link, lang) {
+  if (link?.type === "url") return link.url;
+  if (link?.type === "page") return pathFor(lang, link.page);
+  if (link?.type === "section") return `${pathFor(lang, link.page)}#${sectionAnchor(link.section)}`;
+  return "";
+}
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -230,7 +274,7 @@ async function bodyJson(request) {
   if (source.length > MAX_JSON) throw new Error("Request too large");
   return JSON.parse(source);
 }
-async function normalizedPage(input, builtin) {
+async function normalizedPage(input, builtin, slug = "") {
   const data = input && typeof input === "object" ? input : {};
   const translations = {};
   for (const lang of LANGS) translations[lang] = {
@@ -251,7 +295,15 @@ async function normalizedPage(input, builtin) {
   if (builtin && data.richFields && typeof data.richFields === "object") {
     for (const [id, values] of Object.entries(data.richFields)) {
       if (!/^\d{1,4}$/.test(id) || !values || typeof values !== "object") continue;
-      richFields[id] = Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, values[lang] ? await sanitizeInlineHtml(values[lang]) : ""])));
+      const field = TEMPLATE_INFO[slug]?.fields?.[Number(id)];
+      richFields[id] = Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, values[lang] ? await (field?.tag === "p" ? sanitizeArticleHtml(values[lang]) : sanitizeInlineHtml(values[lang])) : ""])));
+    }
+  }
+  const extraText = {};
+  if (builtin && data.extraText && typeof data.extraText === "object") {
+    for (const [id, values] of Object.entries(data.extraText)) {
+      if (!/^\d{1,4}$/.test(id) || !values || typeof values !== "object") continue;
+      extraText[id] = Object.fromEntries(LANGS.map(lang => [lang, cleanText(values[lang], 5000)]));
     }
   }
   const images = {};
@@ -269,11 +321,26 @@ async function normalizedPage(input, builtin) {
       if (!/^\d{1,4}$/.test(id) || !link || typeof link !== "object") continue;
       const page = cleanText(link.page, 100);
       const url = cleanText(link.url, 500);
-      if (link.type === "page" && /^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(page)) links[id] = { type: "page", page };
-      else if (link.type === "url" && (/^https?:\/\/[^\s"'<>]+$/.test(url) || /^mailto:[^\s"'<>@]+@[^\s"'<>@]+$/.test(url) || /^#[a-zA-Z0-9_-]+$/.test(url))) links[id] = { type: "url", url };
+      if (link.type === "none") { links[id] = { type: "none", hidden: link.hidden === true }; continue; }
+      if (link.type === "page" && validSlug(page)) links[id] = { type: "page", page, hidden: link.hidden === true, color: colorValid(link.color) ? link.color : "", textColor: colorValid(link.textColor) ? link.textColor : "" };
+      else if (link.type === "section" && validSlug(page) && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,50})$/.test(link.section || "")) links[id] = { type: "section", page, section: link.section, hidden: link.hidden === true, color: colorValid(link.color) ? link.color : "", textColor: colorValid(link.textColor) ? link.textColor : "" };
+      else if (link.type === "url" && (/^https?:\/\/[^\s"'<>]+$/.test(url) || /^mailto:[^\s"'<>@]+@[^\s"'<>@]+$/.test(url) || /^#[a-zA-Z0-9_-]+$/.test(url))) links[id] = { type: "url", url, hidden: link.hidden === true, color: colorValid(link.color) ? link.color : "", textColor: colorValid(link.textColor) ? link.textColor : "" };
     }
   }
   const hiddenCards = builtin && Array.isArray(data.hiddenCards) ? data.hiddenCards.filter(x => /^\d{1,4}$/.test(String(x))).map(String) : [];
+  const deletedCards = builtin && Array.isArray(data.deletedCards) ? data.deletedCards.filter(x => /^\d{1,4}$/.test(String(x))).map(String) : [];
+  const deletedLinks = builtin && Array.isArray(data.deletedLinks) ? data.deletedLinks.filter(x => /^\d{1,4}$/.test(String(x))).map(String) : [];
+  const cardMedia = {};
+  if (builtin && data.cardMedia && typeof data.cardMedia === "object") for (const [id, src] of Object.entries(data.cardMedia)) if (/^\d{1,4}$/.test(id) && imageUrlValid(src || "")) cardMedia[id] = src;
+  const cardLinks = {};
+  if (builtin && data.cardLinks && typeof data.cardLinks === "object") for (const [id, link] of Object.entries(data.cardLinks)) if (/^\d{1,4}$/.test(id)) cardLinks[id] = normalizeLinkTarget(link, true);
+  const deletedSections = builtin && Array.isArray(data.deletedSections) ? data.deletedSections.filter(x => /^\d{1,3}$/.test(String(x))).map(String) : [];
+  const sectionExtras = {};
+  if (builtin && data.sectionExtras && typeof data.sectionExtras === "object") {
+    for (const [id, value] of Object.entries(data.sectionExtras)) {
+      if (/^\d{1,3}$/.test(id) && TEMPLATE_INFO[slug]?.sections?.[Number(id)]) sectionExtras[id] = await normalizedSectionExtras(value);
+    }
+  }
   const hiddenSections = builtin && Array.isArray(data.hiddenSections) ? data.hiddenSections.filter(x => /^\d{1,3}$/.test(String(x))).map(String) : [];
   const blocks = Array.isArray(data.blocks) ? await Promise.all(data.blocks.slice(0, 40).map(async block => {
     const legacyImage = imageUrlValid(block.image || "") ? [{ id: crypto.randomUUID(), src: block.image, alt: block.alt || {} }] : [];
@@ -293,14 +360,38 @@ async function normalizedPage(input, builtin) {
       primaryImageId: images.some(image => image.id === block.primaryImageId) ? block.primaryImageId : images[0]?.id || "",
       imageLayout: IMAGE_LAYOUTS.has(block.imageLayout) ? block.imageLayout : "under-caption-left",
       galleryMode: GALLERY_MODES.has(block.galleryMode) ? block.galleryMode : "auto",
+      extras: await normalizedSectionExtras(block.extras),
     };
   })) : [];
   const sectionOrder = Array.isArray(data.sectionOrder) ? [...new Set(data.sectionOrder.filter(value => typeof value === "string" && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,40})$/.test(value)))].slice(0, 100) : [];
-  return { translations, fields, richFields, images, links, hiddenCards, hiddenSections, blocks, sectionOrder };
+  return { translations, fields, richFields, extraText, images, links, hiddenCards, deletedCards, deletedLinks, cardMedia, cardLinks, hiddenSections, deletedSections, sectionExtras, blocks, sectionOrder };
 }
 function blockImages(block) {
   if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
   return imageUrlValid(block.image || "") ? [{ id: "legacy", src: block.image, alt: block.alt || {} }] : [];
+}
+function renderSectionExtras(extras, lang) {
+  if (!extras) return "";
+  const buttons = (extras.buttons || []).filter(button => !button.hidden && button.text?.[lang] || !button.hidden && button.text?.en).map(button => {
+    const href = targetHref(button.link, lang);
+    const external = /^https?:\/\//.test(href) ? ' target="_blank" rel="noopener noreferrer"' : "";
+    return `<a class="cms-extra-button" href="${esc(href || pathFor(lang, "contact.html"))}" style="--cms-button-bg:${esc(button.color || "#dff48c")};--cms-button-text:${esc(button.textColor || "#182820")}"${external}>${esc(button.text?.[lang] || button.text?.en || "")}&nbsp;↗</a>`;
+  }).join("");
+  const visibleCards = (extras.cards || []).filter(card => !card.hidden);
+  const mode = extras.cardMode === "auto" ? (visibleCards.length > 3 ? "ribbon" : "tiles") : extras.cardMode;
+  const cards = visibleCards.map(card => {
+    const title = esc(card.title?.[lang] || card.title?.en || "");
+    const body = card.bodyHtml?.[lang] || card.bodyHtml?.en || "";
+    const image = card.image ? `<img src="${esc(card.image)}" alt="" loading="lazy">` : "";
+    const href = targetHref(card.link, lang);
+    const external = /^https?:\/\//.test(href) ? ' target="_blank" rel="noopener noreferrer"' : "";
+    const content = `${image}<div class="cms-extra-card-copy"><h3>${title}</h3><div>${body}</div></div>`;
+    return href ? `<a class="cms-extra-card" href="${esc(href)}"${external}>${content}</a>` : `<article class="cms-extra-card">${content}</article>`;
+  }).join("");
+  const images = (extras.images || []).map(image => `<figure><img src="${esc(image.src)}" alt="${esc(image.alt?.[lang] || image.alt?.en || "")}" loading="lazy"></figure>`).join("");
+  const imageMode = extras.imageMode === "auto" ? ((extras.images || []).length > 3 ? "slider" : "gallery") : extras.imageMode;
+  if (!buttons && !cards && !images) return "";
+  return `<div class="wrap cms-section-extras">${buttons ? `<div class="cms-extra-buttons">${buttons}</div>` : ""}${cards ? `<div class="cms-extra-cards cms-extra-cards--${mode}">${cards}</div>` : ""}${images ? `<div class="cms-extra-images cms-extra-images--${imageMode}">${images}</div>` : ""}</div>`;
 }
 function renderBlock(block, lang, index = 0) {
   if (block.hidden) return "";
@@ -317,7 +408,7 @@ function renderBlock(block, lang, index = 0) {
   const labels = { en: ["Previous image", "Next image"], ru: ["Предыдущее изображение", "Следующее изображение"], uz: ["Oldingi rasm", "Keyingi rasm"] }[lang];
   const media = images.length ? `<div class="cms-block-media cms-block-media--${mode}">${mode === "slider" && images.length > 1 ? `<div class="cms-slider-controls"><button type="button" data-slider-prev aria-label="${labels[0]}">←</button><button type="button" data-slider-next aria-label="${labels[1]}">→</button></div>` : ""}<div class="cms-block-media-track">${figures}</div></div>` : "";
   const underCaption = layout === "under-caption-left";
-  return `<section class="content-section cms-block ${index % 2 ? "cms-block--soft" : ""} cms-block--${layout}"><div class="wrap"><div class="cms-block-grid"><div class="cms-block-heading"><h2 class="subsection-title">${title}</h2>${underCaption ? media : ""}</div><div class="cms-block-copy">${body}</div></div>${underCaption ? "" : media}</div></section>`;
+  return `<section id="cms-block-${esc(block.id)}" class="content-section cms-block ${index % 2 ? "cms-block--soft" : ""} cms-block--${layout} ${block.extras?.theme && block.extras.theme !== "auto" ? `cms-theme-${block.extras.theme}` : ""}"><div class="wrap"><div class="cms-block-grid"><div class="cms-block-heading"><h2 class="subsection-title">${title}</h2>${underCaption ? media : ""}</div><div class="cms-block-copy">${body}</div></div>${underCaption ? "" : media}</div>${renderSectionExtras(block.extras, lang)}</section>`;
 }
 function sectionSequence(order, sections, blocks) {
   const available = new Set([...sections.map(id => `s:${id}`), ...blocks.map(block => `b:${block.id}`)]);
@@ -346,7 +437,8 @@ function reorderPageSections(html, page, info, lang) {
   }
   if (!parts.size) return html;
   const base = (info?.sections || []).map(section => section.id);
-  const sequence = sectionSequence(page?.data?.sectionOrder, base, page?.data?.blocks || []);
+  const deleted = new Set(page?.data?.deletedSections || []);
+  const sequence = sectionSequence(page?.data?.sectionOrder, base, page?.data?.blocks || []).filter(token => !token.startsWith("s:") || !deleted.has(token.slice(2)));
   const ordered = sequence.filter(token => parts.has(token)).map((token, index) => {
     const section = parts.get(token);
     if (!token.startsWith("b:")) return section;
@@ -428,11 +520,12 @@ async function renderHtml(request, template, slug, lang, page, settings, article
     .on("head", { element(el) {
       const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${pathFor(code, slug)}">`).join("");
       const verification = [["google-site-verification", settings.googleVerification], ["msvalidate.01", settings.bingVerification], ["yandex-verification", settings.yandexVerification]].filter(([, value]) => value).map(([name, value]) => `<meta name="${name}" content="${esc(value)}">`).join("");
-      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=18"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
+      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=19"><script defer src="/assets/cms-public.js?v=19"></script>`, { html: true });
     } })
     .on("body", { element(el) { el.setAttribute("data-title-uz", metadata.title); } })
     .on("[data-i18n],[data-ru]", { element(el) {
       const index = String(fieldIndex++);
+      el.setAttribute("data-cms-field", index);
       const field = info?.fields?.[Number(index)];
       if (!field) {
         const fallback = lang === "en" ? null : el.getAttribute(`data-${lang}`);
@@ -442,10 +535,21 @@ async function renderHtml(request, template, slug, lang, page, settings, article
       const custom = page?.data?.fields?.[index]?.[lang];
       const rich = page?.data?.richFields?.[index]?.[lang];
       const value = custom || field[lang] || field.en;
+      if (field.tag === "p" && /<(?:p|div|ul|ol|h2|h3|blockquote)\b/i.test(rich || "")) {
+        const attributes = [...el.attributes].filter(([name]) => name !== "class").map(([name, value]) => `${name}="${esc(value)}"`).join(" ");
+        el.replace(`<div ${attributes} class="${esc(`${el.getAttribute("class") || ""} cms-rich-field`.trim())}">${rich}</div>`, { html: true });
+        return;
+      }
       el.setInnerContent(rich || (custom ? esc(value).replace(/\n/g, "<br>") : value), { html: true });
+    } })
+    .on("[data-cms-copy]", { element(el) {
+      const id = el.getAttribute("data-cms-copy");
+      const value = page?.data?.extraText?.[id]?.[lang];
+      if (value) el.setInnerContent(value);
     } })
     .on("img", { element(el) {
       const index = String(imageIndex++);
+      el.setAttribute("data-cms-image", index);
       const override = page?.data?.images?.[index];
       const src = override?.src || el.getAttribute("src");
       if (src?.startsWith("assets/")) el.setAttribute("src", "/" + src);
@@ -453,13 +557,32 @@ async function renderHtml(request, template, slug, lang, page, settings, article
       if (override?.alt?.[lang]) el.setAttribute("alt", override.alt[lang]);
       if (override?.hidden) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-image`.trim());
     } })
-    .on("article", { element(el) { const id = String(cardIndex++); if (page?.data?.hiddenCards?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-card`.trim()); } })
-    .on("section", { element(el) { const id = String(sectionIndex++); el.setAttribute("data-cms-section", id); if (hidden.has(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-section`.trim()); } })
+    .on("article", { element(el) { const id = String(cardIndex++); el.setAttribute("data-cms-card", id); if (page?.data?.hiddenCards?.includes(id) || page?.data?.deletedCards?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-card`.trim()); const image = page?.data?.cardMedia?.[id]; if (image) el.prepend(`<img class="cms-card-added-image" src="${esc(image)}" alt="" loading="lazy">`, { html: true }); const link = page?.data?.cardLinks?.[id]; const href = targetHref(link, lang); if (href) { el.setAttribute("class", `${el.getAttribute("class") || ""} cms-card-linked`.trim()); el.append(`<a class="cms-card-overlay" href="${esc(href)}" aria-label="Open card"${/^https?:\/\//.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ""}></a>`, { html: true }); } } })
+    .on("section", { element(el) {
+      const id = String(sectionIndex++);
+      el.setAttribute("data-cms-section", id);
+      el.prepend(`<span id="cms-section-${id}" class="cms-section-anchor" aria-hidden="true"></span>`, { html: true });
+      if (hidden.has(id) || page?.data?.deletedSections?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-section`.trim());
+      const extras = page?.data?.sectionExtras?.[id];
+      if (extras) {
+        if (extras.theme && extras.theme !== "auto") el.setAttribute("class", `${el.getAttribute("class") || ""} cms-theme-${extras.theme}`.trim());
+        el.setAttribute("data-cms-card-mode", extras.cardMode || "auto");
+        if (extras.cardOrder?.length) el.setAttribute("data-cms-card-order", extras.cardOrder.join(","));
+        if (extras.buttonOrder?.length) el.setAttribute("data-cms-button-order", extras.buttonOrder.join(","));
+        const markup = renderSectionExtras(extras, lang);
+        if (markup) el.append(markup, { html: true });
+      }
+    } })
     .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index).replace("<section ", `<section data-cms-block="${esc(block.id)}" `)).join(""), { html: true }); } })
     .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {
-      const override = page?.data?.links?.[String(linkIndex++)];
-      if (override?.type === "page") { el.setAttribute("href", pathFor(lang, override.page)); el.removeAttribute("target"); el.removeAttribute("rel"); return; }
+      const id = String(linkIndex++);
+      el.setAttribute("data-cms-link", id);
+      const override = page?.data?.links?.[id];
+      if (override?.hidden || page?.data?.deletedLinks?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-link`.trim());
+      if (override?.color) el.setAttribute("style", `${el.getAttribute("style") || ""};background-color:${override.color};color:${override.textColor || "#182820"}`);
+      if (override?.type === "none") { el.removeAttribute("href"); el.removeAttribute("target"); el.removeAttribute("rel"); return; }
+      if (override?.type === "page" || override?.type === "section") { el.setAttribute("href", targetHref(override, lang)); el.removeAttribute("target"); el.removeAttribute("rel"); return; }
       if (override?.type === "url") { el.setAttribute("href", override.url); if (/^https?:\/\//.test(override.url)) { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); } else { el.removeAttribute("target"); el.removeAttribute("rel"); } return; }
       const href = el.getAttribute("href");
       if (!href) return;
@@ -611,9 +734,12 @@ async function adminApi(request, env, route) {
     const pages = [
       ...Object.keys(TEMPLATE_INFO).map(slug => {
         const row = rows.results.find(item => item.slug === slug);
-        return { slug, builtin: true, title: TEMPLATE_INFO[slug].title, status: row?.status || "published", updatedAt: row?.updated_at || null };
+        const data = row ? JSON.parse(row.data) : {};
+        const sections = TEMPLATE_INFO[slug].sections.filter(section => !data.deletedSections?.includes(section.id)).map(section => ({ token: `s:${section.id}`, sourceId: section.sourceId, title: section.headingFieldId ? (data.fields?.[section.headingFieldId]?.en || data.richFields?.[section.headingFieldId]?.en?.replace(/<[^>]*>/g, " ") || section.title) : section.title }));
+        sections.push(...(data.blocks || []).map(block => ({ token: `b:${block.id}`, title: block.title?.en || "Untitled section" })));
+        return { slug, builtin: true, title: TEMPLATE_INFO[slug].title, sections, status: row?.status || "published", updatedAt: row?.updated_at || null };
       }),
-      ...custom.map(row => ({ slug: row.slug, builtin: false, title: JSON.parse(row.data).translations?.en?.title || row.slug, status: row.status, updatedAt: row.updated_at })),
+      ...custom.map(row => { const data = JSON.parse(row.data); return { slug: row.slug, builtin: false, title: data.translations?.en?.title || row.slug, sections: (data.blocks || []).map(block => ({ token: `b:${block.id}`, title: block.title?.en || "Untitled section" })), status: row.status, updatedAt: row.updated_at }; }),
     ];
     return json({ pages, settings, emailConfigured: Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD) });
   }
@@ -737,7 +863,7 @@ async function adminApi(request, env, route) {
     if (method === "PUT") {
       let input; try { input = await bodyJson(request); } catch { return json({ error: "Invalid data" }, 400); }
       const status = input.status === "draft" ? "draft" : "published";
-      const data = await normalizedPage(input.data, isBuiltin(slug));
+      const data = await normalizedPage(input.data, isBuiltin(slug), slug);
       if (!isBuiltin(slug) && !data.translations.en.title) return json({ error: "English title is required" }, 400);
       const nextSlug = input.newSlug || slug;
       if (nextSlug !== slug) {
@@ -762,7 +888,7 @@ async function adminApi(request, env, route) {
       if (slug === "index.html") return json({ error: "The homepage cannot be deleted" }, 400);
       if (isBuiltin(slug)) {
         const page = await getPage(env, slug);
-        const data = page?.data || await normalizedPage({}, true);
+        const data = page?.data || await normalizedPage({}, true, slug);
         await env.DB.prepare("INSERT INTO cms_pages (slug,data,status,updated_at) VALUES (?,?,'draft',?) ON CONFLICT(slug) DO UPDATE SET status='draft',updated_at=excluded.updated_at")
           .bind(slug, JSON.stringify(data), new Date().toISOString()).run();
       } else await env.DB.prepare("DELETE FROM cms_pages WHERE slug = ?").bind(slug).run();
