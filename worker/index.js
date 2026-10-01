@@ -70,7 +70,7 @@ function articleCard(article, lang, homepage = false) {
   return `<article class="publication cms-publication"><a href="${href}">${image}<div><span class="card-no">${category} ${date}</span><h3>${title}</h3><p>${summary}</p><span class="card-link">${({ en: "Read article", ru: "Читать статью", uz: "Maqolani o‘qish" }[lang])} ↗</span></div></a></article>`;
 }
 async function sanitizeArticleHtml(source) {
-  const allowed = new Set(["p", "h2", "h3", "ul", "ol", "li", "strong", "b", "em", "i", "blockquote", "br", "a", "img", "figure", "figcaption"]);
+  const allowed = new Set(["p", "div", "h2", "h3", "ul", "ol", "li", "strong", "b", "em", "i", "blockquote", "br", "a", "img", "figure", "figcaption"]);
   const excluded = new Set(["script", "style", "iframe", "object", "embed", "svg", "form", "input", "button"]);
   const response = new HTMLRewriter().on("*", { element(el) {
     const tag = el.tagName.toLowerCase();
@@ -260,9 +260,20 @@ async function normalizedPage(input, builtin) {
       if (!/^\d{1,4}$/.test(id) || !image || typeof image !== "object") continue;
       const src = cleanText(image.src, 300);
       if (src && !/^\/(?:media|assets)\/[a-zA-Z0-9._/-]+$/.test(src)) continue;
-      images[id] = { src, alt: Object.fromEntries(LANGS.map(lang => [lang, cleanText(image.alt?.[lang], 240)])) };
+      images[id] = { src, hidden: image.hidden === true, alt: Object.fromEntries(LANGS.map(lang => [lang, cleanText(image.alt?.[lang], 240)])) };
     }
   }
+  const links = {};
+  if (builtin && data.links && typeof data.links === "object") {
+    for (const [id, link] of Object.entries(data.links)) {
+      if (!/^\d{1,4}$/.test(id) || !link || typeof link !== "object") continue;
+      const page = cleanText(link.page, 100);
+      const url = cleanText(link.url, 500);
+      if (link.type === "page" && /^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(page)) links[id] = { type: "page", page };
+      else if (link.type === "url" && (/^https?:\/\/[^\s"'<>]+$/.test(url) || /^mailto:[^\s"'<>@]+@[^\s"'<>@]+$/.test(url) || /^#[a-zA-Z0-9_-]+$/.test(url))) links[id] = { type: "url", url };
+    }
+  }
+  const hiddenCards = builtin && Array.isArray(data.hiddenCards) ? data.hiddenCards.filter(x => /^\d{1,4}$/.test(String(x))).map(String) : [];
   const hiddenSections = builtin && Array.isArray(data.hiddenSections) ? data.hiddenSections.filter(x => /^\d{1,3}$/.test(String(x))).map(String) : [];
   const blocks = Array.isArray(data.blocks) ? await Promise.all(data.blocks.slice(0, 40).map(async block => {
     const legacyImage = imageUrlValid(block.image || "") ? [{ id: crypto.randomUUID(), src: block.image, alt: block.alt || {} }] : [];
@@ -274,6 +285,7 @@ async function normalizedPage(input, builtin) {
     }));
     return {
       id: /^[a-z0-9-]{1,40}$/.test(block.id || "") ? block.id : crypto.randomUUID(),
+      hidden: block.hidden === true,
       title: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.title?.[lang], 180)])),
       body: Object.fromEntries(LANGS.map(lang => [lang, cleanText(block.body?.[lang], 12000)])),
       bodyHtml: Object.fromEntries(await Promise.all(LANGS.map(async lang => [lang, await sanitizeArticleHtml(block.bodyHtml?.[lang] || "")]))),
@@ -284,13 +296,14 @@ async function normalizedPage(input, builtin) {
     };
   })) : [];
   const sectionOrder = Array.isArray(data.sectionOrder) ? [...new Set(data.sectionOrder.filter(value => typeof value === "string" && /^(?:s:\d{1,3}|b:[a-z0-9-]{1,40})$/.test(value)))].slice(0, 100) : [];
-  return { translations, fields, richFields, images, hiddenSections, blocks, sectionOrder };
+  return { translations, fields, richFields, images, links, hiddenCards, hiddenSections, blocks, sectionOrder };
 }
 function blockImages(block) {
   if (Array.isArray(block.images)) return block.images.filter(image => imageUrlValid(image.src || ""));
   return imageUrlValid(block.image || "") ? [{ id: "legacy", src: block.image, alt: block.alt || {} }] : [];
 }
 function renderBlock(block, lang, index = 0) {
+  if (block.hidden) return "";
   const title = esc(block.title?.[lang] || block.title?.en || "");
   const rich = block.bodyHtml?.[lang] || block.bodyHtml?.en || "";
   const legacy = esc(block.body?.[lang] || block.body?.en || "").replace(/\n/g, "<br>");
@@ -405,7 +418,7 @@ async function renderHtml(request, template, slug, lang, page, settings, article
   const metadata = localizedMetadata(page, slug, lang);
   const origin = new URL(request.url).origin;
   const canonical = `${origin}${pathFor(lang, slug)}`;
-  let fieldIndex = 0, imageIndex = 0, sectionIndex = 0;
+  let fieldIndex = 0, imageIndex = 0, sectionIndex = 0, linkIndex = 0, cardIndex = 0;
   const hidden = new Set(page?.data?.hiddenSections || []);
   const blocks = page?.data?.blocks || [];
   const rewriter = new HTMLRewriter()
@@ -415,7 +428,7 @@ async function renderHtml(request, template, slug, lang, page, settings, article
     .on("head", { element(el) {
       const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${pathFor(code, slug)}">`).join("");
       const verification = [["google-site-verification", settings.googleVerification], ["msvalidate.01", settings.bingVerification], ["yandex-verification", settings.yandexVerification]].filter(([, value]) => value).map(([name, value]) => `<meta name="${name}" content="${esc(value)}">`).join("");
-      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=16"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
+      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=17"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
     } })
     .on("body", { element(el) { el.setAttribute("data-title-uz", metadata.title); } })
     .on("[data-i18n],[data-ru]", { element(el) {
@@ -438,11 +451,16 @@ async function renderHtml(request, template, slug, lang, page, settings, article
       if (src?.startsWith("assets/")) el.setAttribute("src", "/" + src);
       else if (src) el.setAttribute("src", src);
       if (override?.alt?.[lang]) el.setAttribute("alt", override.alt[lang]);
+      if (override?.hidden) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-image`.trim());
     } })
+    .on("article", { element(el) { const id = String(cardIndex++); if (page?.data?.hiddenCards?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-card`.trim()); } })
     .on("section", { element(el) { const id = String(sectionIndex++); if (hidden.has(id)) el.remove(); else el.setAttribute("data-cms-section", id); } })
     .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index).replace("<section ", `<section data-cms-block="${esc(block.id)}" `)).join(""), { html: true }); } })
     .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {
+      const override = page?.data?.links?.[String(linkIndex++)];
+      if (override?.type === "page") { el.setAttribute("href", pathFor(lang, override.page)); el.removeAttribute("target"); el.removeAttribute("rel"); return; }
+      if (override?.type === "url") { el.setAttribute("href", override.url); if (/^https?:\/\//.test(override.url)) { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); } else { el.removeAttribute("target"); el.removeAttribute("rel"); } return; }
       const href = el.getAttribute("href");
       if (!href) return;
       if (href.startsWith("mailto:")) {

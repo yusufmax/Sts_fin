@@ -32,6 +32,28 @@ for path in sorted(root.glob("*.html")):
             "alt": element.get("alt", ""),
             "section": (section.get("id") or " ".join(section.get("class", []))) if section else "Navigation / footer",
         })
+    links = []
+    for index, element in enumerate(soup.select("a[href]")):
+        section = element.find_parent("section")
+        card = element.find_parent("article")
+        links.append({
+            "id": str(index),
+            "href": element.get("href", ""),
+            "text": element.get_text(" ", strip=True)[:120] or element.get("aria-label", "") or "Link",
+            "section": (section.get("id") or " ".join(section.get("class", []))) if section else "Navigation / footer",
+            "card": card.find(["h2", "h3", "h4"]).get_text(" ", strip=True) if card and card.find(["h2", "h3", "h4"]) else "",
+        })
+    cards = []
+    for index, element in enumerate(soup.select("article")):
+        heading = element.find(["h2", "h3", "h4"])
+        section = element.find_parent("section")
+        cards.append({
+            "id": str(index),
+            "title": heading.get_text(" ", strip=True) if heading else "Card",
+            "section": (section.get("id") or " ".join(section.get("class", []))) if section else "Page",
+            "imageIds": [str(i) for i, image in enumerate(soup.select("img")) if image in element.descendants],
+            "linkIds": [str(i) for i, link in enumerate(soup.select("a[href]")) if link in element.descendants],
+        })
     sections = []
     for index, element in enumerate(soup.select("section")):
         heading = element.find(["h1", "h2", "h3"])
@@ -46,6 +68,8 @@ for path in sorted(root.glob("*.html")):
         },
         "fields": fields,
         "images": images,
+        "links": links,
+        "cards": cards,
         "sections": sections,
         "description": soup.find("meta", attrs={"name": "description"}).get("content", ""),
         "descriptions": {
