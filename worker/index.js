@@ -428,7 +428,7 @@ async function renderHtml(request, template, slug, lang, page, settings, article
     .on("head", { element(el) {
       const alternate = LANGS.map(code => `<link rel="alternate" hreflang="${code}" href="${origin}${pathFor(code, slug)}">`).join("");
       const verification = [["google-site-verification", settings.googleVerification], ["msvalidate.01", settings.bingVerification], ["yandex-verification", settings.yandexVerification]].filter(([, value]) => value).map(([name, value]) => `<meta name="${name}" content="${esc(value)}">`).join("");
-      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=17"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
+      el.append(`<link rel="canonical" href="${esc(canonical)}">${alternate}<link rel="alternate" hreflang="x-default" href="${origin}${pathFor("en", slug)}"><meta property="og:type" content="website"><meta property="og:title" content="${esc(metadata.ogTitle)}"><meta property="og:description" content="${esc(metadata.ogDescription)}"><meta property="og:image" content="${origin}${esc(metadata.ogImage)}"><meta property="og:url" content="${esc(canonical)}"><meta name="twitter:card" content="summary_large_image">${verification}<link rel="stylesheet" href="/assets/cms-blocks.css?v=18"><script defer src="/assets/cms-public.js?v=15"></script>`, { html: true });
     } })
     .on("body", { element(el) { el.setAttribute("data-title-uz", metadata.title); } })
     .on("[data-i18n],[data-ru]", { element(el) {
@@ -454,7 +454,7 @@ async function renderHtml(request, template, slug, lang, page, settings, article
       if (override?.hidden) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-image`.trim());
     } })
     .on("article", { element(el) { const id = String(cardIndex++); if (page?.data?.hiddenCards?.includes(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-card`.trim()); } })
-    .on("section", { element(el) { const id = String(sectionIndex++); if (hidden.has(id)) el.remove(); else el.setAttribute("data-cms-section", id); } })
+    .on("section", { element(el) { const id = String(sectionIndex++); el.setAttribute("data-cms-section", id); if (hidden.has(id)) el.setAttribute("class", `${el.getAttribute("class") || ""} cms-hidden-section`.trim()); } })
     .on("main", { element(el) { if (blocks.length && info) el.append(blocks.map((block, index) => renderBlock(block, lang, index).replace("<section ", `<section data-cms-block="${esc(block.id)}" `)).join(""), { html: true }); } })
     .on(slug === "index.html" ? ".news-grid" : ".publication-grid", { element(el) { if (articles.length) el.prepend(articles.map(article => articleCard(article, lang, slug === "index.html")).join(""), { html: true }); } })
     .on("a[href]", { element(el) {

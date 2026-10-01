@@ -8,7 +8,7 @@
 .cms-block-copy>:first-child{margin-top:0}
 .cms-block-copy>:last-child{margin-bottom:0}
 .cms-block-copy p,.cms-block-copy div{margin:0 0 1.15em}
-.cms-hidden-card,.cms-hidden-image{display:none!important}
+.cms-hidden-section,.cms-hidden-card,.cms-hidden-image{display:none!important}
 .cms-block-copy h2,.cms-block-copy h3{color:#1a2b20;line-height:1.16;letter-spacing:-.045em;margin:1.3em 0 .48em}
 .cms-block-copy h2{font-size:clamp(28px,3vw,42px)}
 .cms-block-copy h3{font-size:clamp(23px,2.4vw,32px)}
