@@ -72,16 +72,17 @@ const validSlug = slug => !RETIRED_SLUGS.has(slug) && (/^[a-z0-9][a-z0-9-]{0,59}
 const isBuiltin = slug => Object.hasOwn(TEMPLATE_INFO, slug);
 const noStore = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 // Overrides are stored by element position, so they only apply to the template version they were
-// saved for. Overrides from an older template are kept in the database but not applied; added
-// sections and page metadata do not depend on positions and are kept.
+// saved for. Overrides from an older template are kept in the database but not applied. Sections
+// added in the CMS for the older page are kept but hidden and placed after the page's own
+// sections, so they can be reviewed and shown again in the admin; page metadata is kept.
 function forCurrentTemplate(slug, data) {
   const info = TEMPLATE_INFO[slug];
   if (!info || !data || typeof data !== "object") return data;
   const savedFor = data.templateVersion || LEGACY_TEMPLATE_VERSIONS[slug];
   if (!savedFor || savedFor === info.version) return data;
   return {
-    translations: data.translations || {}, blocks: Array.isArray(data.blocks) ? data.blocks : [],
-    sectionOrder: (Array.isArray(data.sectionOrder) ? data.sectionOrder : []).filter(token => typeof token === "string" && token.startsWith("b:")),
+    translations: data.translations || {}, blocks: (Array.isArray(data.blocks) ? data.blocks : []).map(block => ({ ...block, hidden: true })),
+    sectionOrder: [],
     fields: {}, richFields: {}, extraText: {}, images: {}, links: {}, hiddenCards: [], deletedCards: [], deletedLinks: [],
     cardMedia: {}, cardLinks: {}, hiddenSections: [], deletedSections: [], sectionExtras: {}, templateVersion: info.version,
   };
