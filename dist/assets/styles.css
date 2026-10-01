@@ -71,3 +71,7 @@
 .bento-card h3{font-size:clamp(26px,2.5vw,42px)}
 /* The CMS anchor added to every section must not take a cell in the hero grid */
 .hero>.cms-section-anchor{position:absolute;top:-110px;left:0}
+/* Small labels above section titles are not shown. They stay in the markup because CMS edits are
+   stored by element position; removing them would shift every saved edit. Article dates stay. */
+.kicker,.story-index{display:none!important}
+.article-page .kicker{display:flex!important}
