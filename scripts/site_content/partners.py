@@ -11,7 +11,7 @@ PAGE = {
                   'Mustahkam texnologik hamkorliklar S3 yondashuvining asosidir.'),
     },
     'blocks': [
-        ('continuation', {'items': [
+        ('intro', {'items': [
             ('p', X('Modern mission-critical solutions often require technologies and expertise from multiple specialized organizations. S3 works with established international manufacturers and experienced integration partners to bring advanced technologies, specialist knowledge, and proven solutions to our customers in Uzbekistan.',
                     'Современные решения для критически важных задач часто требуют технологий и экспертизы сразу нескольких специализированных организаций. S3 работает с признанными международными производителями и опытными партнёрами по интеграции, чтобы предлагать заказчикам в Узбекистане передовые технологии, специальные знания и проверенные решения.',
                     'Zamonaviy o‘ta muhim yechimlar ko‘pincha bir nechta ixtisoslashgan tashkilotlarning texnologiyalari va ekspertizasini talab qiladi. S3 O‘zbekistondagi buyurtmachilariga ilg‘or texnologiyalar, ixtisoslashgan bilimlar va sinovdan o‘tgan yechimlarni yetkazish uchun tan olingan xalqaro ishlab chiqaruvchilar va tajribali integratsiya hamkorlari bilan ishlaydi.')),
@@ -19,9 +19,17 @@ PAGE = {
                     'Наша роль — соединять эту международную экспертизу с местными требованиями, системной интеграцией, обучением, передачей знаний и поддержкой жизненного цикла.',
                     'Bizning vazifamiz — bu xalqaro ekspertizani mahalliy talablar, tizim integratsiyasi, o‘qitish, bilim uzatish va hayotiy sikl davomida qo‘llab-quvvatlash bilan bog‘lash.')),
             ('p', X('The result is more than access to technology.', 'Результат — это больше, чем доступ к технологиям.', 'Natija — texnologiyalardan foydalanish imkoniyatidan ham ko‘proq.')),
-            ('emphasis', X('It is a partnership model designed to transform advanced technologies into sustainable operational capabilities.',
+            ('p', X('It is a partnership model designed to transform advanced technologies into sustainable operational capabilities.',
                            'Это модель партнёрства, созданная для того, чтобы превращать передовые технологии в устойчивые операционные возможности.',
                            'Bu ilg‘or texnologiyalarni barqaror operatsion imkoniyatlarga aylantirishga mo‘ljallangan hamkorlik modelidir.')),
+        ]}),
+        ('logos', {'partners': [
+            {'name': 'L3Harris Technologies', 'logo': 'l3harris-logo.svg', 'url': 'https://www.l3harris.com/',
+             'label': X('Combat-Proven Technology for Mission-Critical Operations', 'Проверенные в боевых условиях технологии для критически важных операций', 'O‘ta muhim operatsiyalar uchun jangovar sharoitda sinovdan o‘tgan texnologiyalar'),
+             'link': X('Visit L3Harris Technologies', 'Сайт L3Harris Technologies', 'L3Harris Technologies saytiga o‘tish')},
+            {'name': 'Digital Technologies (DTECH)', 'logo': 'dtech-logo-horizontal.svg', 'url': 'https://www.dtech.ge/en/', 'light': True,
+             'label': X('Integration Experience. Technical Expertise. Regional Cooperation.', 'Опыт интеграции. Техническая экспертиза. Региональное сотрудничество.', 'Integratsiya tajribasi. Texnik ekspertiza. Mintaqaviy hamkorlik.'),
+             'link': X('Visit DTECH', 'Сайт DTECH', 'DTECH saytiga o‘tish')},
         ]}),
         ('prose', {'title': X('Our Partnership Approach', 'Наш подход к партнёрству', 'Hamkorlikka yondashuvimiz'), 'soft': True, 'items': [
             ('p', X('S3 develops partnerships with technology manufacturers and organizations whose products, expertise, and capabilities complement our systems integration portfolio.',
@@ -49,10 +57,9 @@ PAGE = {
                     'Мы стремимся создать сильную технологическую экосистему, которая позволяет S3 выбирать и интегрировать подходящие технологии с учётом операционных и технических требований каждого заказчика.',
                     'Biz S3 ga har bir buyurtmachining operatsion va texnik talablariga muvofiq mos texnologiyalarni tanlash va integratsiya qilish imkonini beradigan kuchli texnologik ekotizimni rivojlantirishga intilamiz.')),
         ]}),
-        ('partner', {
+        ('prose', {
             'title': X('L3Harris Technologies', 'L3Harris Technologies', 'L3Harris Technologies'),
             'subtitle': X('Combat-Proven Technology for Mission-Critical Operations', 'Проверенные в боевых условиях технологии для критически важных операций', 'O‘ta muhim operatsiyalar uchun jangovar sharoitda sinovdan o‘tgan texnologiyalar'),
-            'logo': 'l3harris-logo.svg',
             'items': [
                 ('p', X('L3Harris Technologies is a key technology partner supporting S3\'s mission to provide advanced solutions to government and defense customers.',
                         'L3Harris Technologies — ключевой технологический партнёр, поддерживающий миссию S3 по предоставлению передовых решений государственным и оборонным заказчикам.',
@@ -75,7 +82,12 @@ PAGE = {
                     X('Local Integration', 'Местная интеграция', 'Mahalliy integratsiya'),
                     X('Operational Capability', 'Операционные возможности', 'Operatsion imkoniyat'),
                 ]),
-                ('h3', X('From Communications to Integrated Systems', 'От связи — к интегрированным системам', 'Aloqadan — integratsiyalashgan tizimlargacha')),
+            ],
+        }),
+        ('prose', {
+            'title': X('From Communications to Integrated Systems', 'От связи — к интегрированным системам', 'Aloqadan — integratsiyalashgan tizimlargacha'),
+            'soft': True,
+            'items': [
                 ('p', X('Our cooperation with L3Harris supports S3 capabilities in areas such as:',
                         'Сотрудничество с L3Harris поддерживает возможности S3 в таких областях, как:',
                         'L3Harris bilan hamkorligimiz S3 imkoniyatlarini quyidagi sohalarda qo‘llab-quvvatlaydi:')),
@@ -98,16 +110,13 @@ PAGE = {
                         'S3 интегрирует эти технологии в законченные решения, построенные вокруг требований заказчика, и там, где это технически возможно, связывает новые возможности с уже эксплуатируемыми системами и инфраструктурой.',
                         'S3 bu texnologiyalarni buyurtmachi talablari asosida yaratilgan yaxlit yechimlarga integratsiya qiladi va texnik jihatdan mumkin bo‘lgan hollarda yangi imkoniyatlarni allaqachon foydalanilayotgan tizimlar va infratuzilma bilan bog‘laydi.')),
                 ('p', X('This reflects one of our core integration principles:', 'Это отражает один из ключевых принципов нашей интеграции:', 'Bu integratsiyadagi asosiy tamoyillarimizdan birini aks ettiradi:')),
-                ('emphasis', X('Modernization Without Starting From Zero.', 'Модернизация без начала с нуля.', 'Noldan boshlamasdan modernizatsiya.')),
+                ('p', X('Modernization Without Starting From Zero.', 'Модернизация без начала с нуля.', 'Noldan boshlamasdan modernizatsiya.')),
                 ('buttons', [(X('Visit L3Harris Technologies', 'Сайт L3Harris Technologies', 'L3Harris Technologies saytiga o‘tish'), 'https://www.l3harris.com/', 'text-link')]),
             ],
         }),
-        ('partner', {
+        ('prose', {
             'title': X('Digital Technologies (DTECH)', 'Digital Technologies (DTECH)', 'Digital Technologies (DTECH)'),
             'subtitle': X('Integration Experience. Technical Expertise. Regional Cooperation.', 'Опыт интеграции. Техническая экспертиза. Региональное сотрудничество.', 'Integratsiya tajribasi. Texnik ekspertiza. Mintaqaviy hamkorlik.'),
-            'logo': 'dtech-logo-horizontal.svg',
-            'light': True,
-            'soft': True,
             'items': [
                 ('p', X('Digital Technologies (DTECH) is an experienced technology and systems integration company based in Georgia and an important partner in S3\'s development and delivery of mission-critical solutions.',
                         'Digital Technologies (DTECH) — опытная технологическая компания и системный интегратор из Грузии, важный партнёр S3 в разработке и поставке решений для критически важных задач.',
@@ -121,7 +130,12 @@ PAGE = {
                 ('p', X('Cooperation between S3 and DTECH allows us to combine local presence in Uzbekistan with additional regional integration experience and specialist technical resources.',
                         'Сотрудничество S3 и DTECH позволяет сочетать местное присутствие в Узбекистане с дополнительным региональным опытом интеграции и специализированными техническими ресурсами.',
                         'S3 va DTECH hamkorligi O‘zbekistondagi mahalliy vakillikni qo‘shimcha mintaqaviy integratsiya tajribasi va ixtisoslashgan texnik resurslar bilan uyg‘unlashtirish imkonini beradi.')),
-                ('h3', X('Working Together', 'Совместная работа', 'Birgalikda ishlash')),
+            ],
+        }),
+        ('prose', {
+            'title': X('Working Together', 'Совместная работа', 'Birgalikda ishlash'),
+            'soft': True,
+            'items': [
                 ('p', X('S3 and DTECH cooperate across areas including:', 'S3 и DTECH сотрудничают в таких областях, как:', 'S3 va DTECH quyidagi sohalarda hamkorlik qiladi:')),
                 ('list', [
                     X('Solution development', 'Разработка решений', 'Yechimlarni ishlab chiqish'),
@@ -143,13 +157,13 @@ PAGE = {
                 ('p', X('Together, our teams can bring complementary expertise to complex customer requirements while maintaining strong local engagement through S3.',
                         'Вместе наши команды могут предложить взаимодополняющую экспертизу для сложных задач заказчика, сохраняя тесное местное взаимодействие через S3.',
                         'Birgalikda jamoalarimiz murakkab buyurtmachi talablariga bir-birini to‘ldiruvchi ekspertizani taqdim eta oladi va S3 orqali mustahkam mahalliy hamkorlikni saqlaydi.')),
-                ('emphasis', X('International Experience. Regional Expertise. Local Support.', 'Международный опыт. Региональная экспертиза. Местная поддержка.', 'Xalqaro tajriba. Mintaqaviy ekspertiza. Mahalliy qo‘llab-quvvatlash.')),
+                ('p', X('International Experience. Regional Expertise. Local Support.', 'Международный опыт. Региональная экспертиза. Местная поддержка.', 'Xalqaro tajriba. Mintaqaviy ekspertiza. Mahalliy qo‘llab-quvvatlash.')),
                 ('buttons', [(X('Visit DTECH', 'Сайт DTECH', 'DTECH saytiga o‘tish'), 'https://www.dtech.ge/en/', 'text-link')]),
             ],
         }),
         ('prose', {'title': X('Expanding Our Technology Ecosystem', 'Расширяем технологическую экосистему', 'Texnologik ekotizimimizni kengaytiramiz'),
                    'subtitle': X('Building Partnerships for Future Capabilities', 'Партнёрства для будущих возможностей', 'Kelajakdagi imkoniyatlar uchun hamkorliklar'), 'items': [
-            ('emphasis', X('S3 continues to expand its technology portfolio.', 'S3 продолжает расширять свой технологический портфель.', 'S3 o‘z texnologik portfelini kengaytirishda davom etmoqda.')),
+            ('p', X('S3 continues to expand its technology portfolio.', 'S3 продолжает расширять свой технологический портфель.', 'S3 o‘z texnologik portfelini kengaytirishda davom etmoqda.')),
             ('p', X('We are currently engaged in discussions with additional established international technology manufacturers and solution providers whose capabilities can complement our existing portfolio and support the evolving requirements of our customers.',
                     'Сейчас мы ведём переговоры с другими признанными международными производителями технологий и поставщиками решений, чьи возможности могут дополнить наш портфель и отвечать меняющимся требованиям заказчиков.',
                     'Hozirda biz imkoniyatlari mavjud portfelimizni to‘ldirishi va buyurtmachilarimizning o‘zgaruvchan talablarini qo‘llab-quvvatlashi mumkin bo‘lgan boshqa tan olingan xalqaro texnologiya ishlab chiqaruvchilari va yechim yetkazib beruvchilari bilan muzokaralar olib bormoqdamiz.')),

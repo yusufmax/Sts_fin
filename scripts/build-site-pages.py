@@ -124,11 +124,16 @@ body+='</select></label><label class="form-field">'+t('Brief description of the 
 pages['contact.html']=shell('contact.html','Contact','Контакты','Contact S3 about a technology requirement, consultation, partnership, training or technical support.',body)
 
 
-# Pages written from the "Content of Website" document. Each text is an (en, ru, uz) triple.
+# Pages written from the "Content of Website" document, laid out with the existing page blocks.
+# Each text is an (en, ru, uz) triple.
 def tx(text, tag='span', cls=''):
     en, ru, uz = text
     attrs = f' class="{cls}"' if cls else ''
     return f'<{tag}{attrs} data-ru="{escape(ru, quote=True)}" data-uz="{escape(uz, quote=True)}">{en}</{tag}>'
+
+
+def strong(text):
+    return tuple(f'<strong>{value}</strong>' for value in text)
 
 
 def button(label, href, cls='primary-link'):
@@ -140,19 +145,17 @@ def items_html(items):
     html = ''
     for kind, value in items:
         if kind == 'p': html += tx(value, 'p')
-        elif kind == 'emphasis': html += tx(value, 'p', 'prose-emphasis')
-        elif kind == 'h3': html += tx(value, 'h3', 'prose-subhead')
         elif kind == 'list': html += '<ul class="clean-list">' + ''.join(tx(item, 'li') for item in value) + '</ul>'
-        elif kind == 'questions': html += '<ol class="question-list">' + ''.join(tx(item, 'li') for item in value) + '</ol>'
-        elif kind == 'flow': html += '<ol class="flow-line">' + ''.join(tx(item, 'li') for item in value) + '</ol>'
-        elif kind == 'buttons': html += '<div class="prose-actions">' + ''.join(button(*item) for item in value) + '</div>'
+        elif kind == 'questions': html += ''.join(tx(strong(item), 'p') for item in value)
+        elif kind == 'flow': html += tx(strong(tuple(' → '.join(step[lang] for step in value) for lang in range(3))), 'p')
+        elif kind == 'buttons': html += '<div class="action-row">' + ''.join(button(*item) for item in value) + '</div>'
         else: raise ValueError(f'Unknown content item: {kind}')
     return html
 
 
-def numbered_head(number, title, subtitle=None):
-    sub = tx(subtitle, 'p', 'section-intro') if subtitle else ''
-    return f'<div class="subsection-head"><span class="kicker">{number:02d} / S3</span>{tx(title, "h2", "subsection-title")}{sub}</div>'
+def numbered_head(number, title=None, intro=()):
+    heading = tx(title, 'h2', 'subsection-title') if title else ''
+    return f'<div class="subsection-head"><span class="kicker">{number:02d} / S3</span>{heading}{"".join(tx(text, "p", "section-intro") for text in intro)}</div>'
 
 
 def render_page(page):
@@ -163,49 +166,54 @@ def render_page(page):
     number = 0
     for kind, block in page['blocks']:
         soft = ' soft' if block.get('soft') else ''
-        if kind == 'continuation':
-            body += f'<section class="content-section continuation section-pad"><div class="wrap"><div class="prose-stack prose-wide">{items_html(block["items"])}</div></div></section>'
-        elif kind == 'prose':
+        if kind in ('intro', 'prose'):
             number += 1
-            body += f'<section class="content-section{soft} section-pad"><div class="wrap editorial-grid">{numbered_head(number, block["title"], block.get("subtitle"))}<div class="prose-stack">{items_html(block["items"])}</div></div></section>'
+            subtitle = [block['subtitle']] if block.get('subtitle') else []
+            body += f'<section class="content-section{soft} section-pad"><div class="wrap editorial-grid">{numbered_head(number, block.get("title"), subtitle)}<div class="prose-stack">{items_html(block["items"])}</div></div></section>'
         elif kind == 'cards':
             head = ''
-            if block.get('title'):
+            if block.get('title') or block.get('intro'):
                 number += 1
-                head = numbered_head(number, block['title'], block.get('subtitle'))
-            intro = f'<div class="prose-stack prose-wide card-intro">{items_html(block["intro"])}</div>' if block.get('intro') else ''
-            outro = f'<div class="prose-stack prose-wide card-outro">{items_html(block["outro"])}</div>' if block.get('outro') else ''
-            cards = ''.join(f'<article class="info-card"><span class="card-no">{index:02d}</span>{tx(title, "h3")}{"".join(tx(text, "p") for text in texts)}</article>' for index, (title, texts) in enumerate(block['cards'], 1))
-            body += f'<section class="content-section{soft} section-pad"><div class="wrap">{head}{intro}<div class="card-grid {block.get("columns", "three")}">{cards}</div>{outro}</div></section>'
+                intro = ([block['subtitle']] if block.get('subtitle') else []) + [text for _, text in block.get('intro', [])]
+                head = numbered_head(number, block.get('title'), intro)
+            cards = ''
+            for index, card in enumerate(block['cards'], 1):
+                title, texts = card[0], card[1]
+                more = button(card[2][0], card[2][1], 'card-link') if len(card) > 2 else ''
+                cards += f'<article class="info-card"><span class="card-no">{index:02d}</span>{tx(title, "h3")}{"".join(tx(text, "p") for text in texts)}{more}</article>'
+            outro = f'<div class="prose-stack">{items_html(block["outro"])}</div>' if block.get('outro') else ''
+            body += f'<section class="content-section{soft} section-pad"><div class="wrap">{head}<div class="card-grid {block.get("columns", "three")}">{cards}</div>{outro}</div></section>'
         elif kind == 'details':
             head = ''
             if block.get('title'):
                 number += 1
-                head = numbered_head(number, block['title'], block.get('subtitle'))
+                head = numbered_head(number, block['title'])
             rows = ''
             for row in block['rows']:
                 anchor = f' id="{row["id"]}"' if row.get('id') else ''
-                lead = tx(row['subtitle'], 'p', 'detail-lead') if row.get('subtitle') else ''
+                lead = tx(row['subtitle'], 'p') if row.get('subtitle') else ''
                 rows += f'<article{anchor} class="detail-row"><div><span class="detail-line"></span>{tx(row["title"], "h3")}</div><div>{lead}{items_html(row.get("items", []))}</div></article>'
-            outro = f'<div class="detail-outro">{items_html(block["outro"])}</div>' if block.get('outro') else ''
-            body += f'<section class="detail-section section-pad"><div class="wrap">{head}{rows}{outro}</div></section>'
-        elif kind == 'anchors':
-            links = ''.join(f'<a href="#{anchor}">{tx(label)}</a>' for anchor, label in block['links'])
-            body += f'<section class="content-section anchor-section"><div class="wrap"><nav class="anchor-nav" aria-label="Page sections">{links}</nav></div></section>'
+            if block.get('outro'):
+                rows += f'<div class="detail-row"><div></div><div>{items_html(block["outro"])}</div></div>'
+            body += f'<section class="detail-section section-pad"><div class="wrap">{head}{rows}</div></section>'
         elif kind == 'facts':
             facts = ''.join(f'<div><strong>{value}</strong>{tx(label)}</div>' for value, label in block['facts'])
             body += f'<section class="fact-band"><div class="wrap fact-grid">{facts}</div></section>'
-        elif kind == 'partner':
+        elif kind == 'logos':
             number += 1
-            light = ' light' if block.get('light') else ''
-            logo = f'<div class="partner-feature-logo{light}"><img src="assets/{block["logo"]}" alt="{escape(block["title"][0], quote=True)}"></div>'
-            sub = tx(block['subtitle'], 'p', 'section-intro') if block.get('subtitle') else ''
-            body += f'<section class="content-section partner-feature{soft} section-pad"><div class="wrap editorial-grid"><div class="subsection-head">{logo}<span class="kicker">{number:02d} / S3</span>{tx(block["title"], "h2", "subsection-title")}{sub}</div><div class="prose-stack">{items_html(block["items"])}</div></div></section>'
+            cards = ''
+            for partner in block['partners']:
+                light = ' light' if partner.get('light') else ''
+                cards += f'<article class="partner-card"><div class="partner-card-logo{light}"><img src="assets/{partner["logo"]}" alt="{escape(partner["name"], quote=True)}"></div><div>{tx(partner["label"], "span", "card-no")}<h3>{partner["name"]}</h3>{button(partner["link"], partner["url"], "card-link")}</div></article>'
+            body += f'<section class="content-section{soft} section-pad"><div class="wrap">{numbered_head(number, block.get("title"))}<div class="partner-grid two">{cards}</div></div></section>'
         elif kind == 'closing':
-            lines = ''.join(tx(line, 'p', 'statement-line') for line in block.get('lines', []))
+            lines = ''.join(tx(line, 'p', 'section-intro') for line in block.get('lines', []))
             actions = ''.join(button(*item) for item in block.get('buttons', []))
-            actions = f'<div class="closing-actions">{actions}</div>' if actions else ''
-            body += f'<section class="statement-section closing-section section-pad"><div class="wrap"><span class="kicker">Strategic Security Systems</span>{tx(block["statement"], "p", "statement")}{lines}{actions}</div></section>'
+            actions = f'<div class="action-row">{actions}</div>' if actions else ''
+            if block.get('style') == 'statement':
+                body += f'<section class="statement-section section-pad"><div class="wrap"><span class="kicker">Strategic Security Systems</span>{tx(block["statement"], "h2", "statement")}{lines}{actions}</div></section>'
+            else:
+                body += f'<section class="cta-section section-pad"><div class="wrap"><div class="subsection-head"><div class="kicker">Strategic Security Systems</div>{tx(block["statement"], "h2", "subsection-title")}{lines}</div>{actions}</div></section>'
         else:
             raise ValueError(f'Unknown block: {kind}')
     return body

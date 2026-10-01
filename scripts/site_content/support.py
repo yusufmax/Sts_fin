@@ -11,11 +11,11 @@ PAGE = {
                   'O‘ta muhim tizimlar uchun muvaffaqiyatli yetkazib berish va o‘rnatishning o‘zi yetarli emas.'),
     },
     'blocks': [
-        ('continuation', {'items': [
+        ('intro', {'items': [
             ('p', X('Once a solution becomes operational, customers need access to reliable technical expertise, effective troubleshooting, continued knowledge transfer, and support that understands both the technology and the environment in which it is used.',
                     'Когда решение введено в эксплуатацию, заказчикам нужен доступ к надёжной технической экспертизе, эффективному устранению неисправностей, постоянной передаче знаний и поддержке, которая понимает как технологию, так и среду, в которой она используется.',
                     'Yechim ishga tushirilgach, buyurtmachilarga ishonchli texnik ekspertiza, nosozliklarni samarali bartaraf etish, bilimlarni doimiy uzatish hamda texnologiyani ham, u qo‘llaniladigan muhitni ham tushunadigan qo‘llab-quvvatlash zarur bo‘ladi.')),
-            ('emphasis', X('For this reason, S3 provides lifecycle support and Field Service Representative (FSR) services for the solutions we deliver.',
+            ('p', X('For this reason, S3 provides lifecycle support and Field Service Representative (FSR) services for the solutions we deliver.',
                            'Поэтому S3 оказывает поддержку жизненного цикла и предоставляет услуги выездных технических специалистов (FSR) для поставляемых решений.',
                            'Shu sababli S3 o‘zi yetkazib beradigan yechimlar uchun hayotiy sikl davomida qo‘llab-quvvatlash va joylardagi texnik vakillar (FSR) xizmatlarini taqdim etadi.')),
         ]}),
@@ -49,7 +49,7 @@ PAGE = {
         ]}),
         ('prose', {'title': X('Field Service Representative (FSR)', 'Выездной технический специалист (FSR)', 'Joylardagi texnik vakil (FSR)'),
                    'subtitle': X('Expertise Close to the Customer', 'Экспертиза рядом с заказчиком', 'Buyurtmachiga yaqin ekspertiza'), 'items': [
-            ('emphasis', X('The FSR provides more than traditional technical support.',
+            ('p', X('The FSR provides more than traditional technical support.',
                            'FSR — это больше, чем традиционная техническая поддержка.',
                            'FSR an’anaviy texnik yordamdan ko‘proq narsani taqdim etadi.')),
             ('p', X('The FSR works alongside customer personnel and develops an understanding of the deployed systems, technical environment, operational requirements, and recurring support needs.',
@@ -124,7 +124,7 @@ PAGE = {
                     'FSR buyurtmachi, S3, integratsiya bo‘yicha hamkorlar va texnologiya ishlab chiqaruvchilari o‘rtasidagi texnik bo‘g‘inga aylanib, axborot va ekspertizaning har ikki yo‘nalishda samarali harakatlanishiga yordam beradi.')),
         ]}),
         ('prose', {'title': X('From Formal Training to Everyday Knowledge Transfer', 'От формального обучения — к ежедневной передаче знаний', 'Rasmiy o‘qitishdan — kundalik bilim uzatishgacha'), 'soft': True, 'items': [
-            ('emphasis', X('Formal training provides the foundation. Day-to-day experience develops expertise.',
+            ('p', X('Formal training provides the foundation. Day-to-day experience develops expertise.',
                            'Формальное обучение закладывает основу. Повседневный опыт развивает экспертизу.',
                            'Rasmiy o‘qitish poydevor yaratadi. Kundalik tajriba ekspertizani rivojlantiradi.')),
             ('p', X('Following training, personnel inevitably encounter new questions and situations as they begin using systems independently.',
@@ -150,7 +150,7 @@ PAGE = {
             ('p', X('The objective of FSR support is not to create permanent dependence on an external specialist.',
                     'Цель поддержки FSR — не создать постоянную зависимость от внешнего специалиста.',
                     'FSR yordamining maqsadi tashqi mutaxassisga doimiy qaramlik yaratish emas.')),
-            ('emphasis', X('Our approach is designed to strengthen the customer\'s own technical capability.',
+            ('p', X('Our approach is designed to strengthen the customer\'s own technical capability.',
                            'Наш подход направлен на укрепление собственных технических компетенций заказчика.',
                            'Yondashuvimiz buyurtmachining o‘z texnik salohiyatini mustahkamlashga qaratilgan.')),
             ('p', X('Through troubleshooting performed together with customer specialists, explanation of technical decisions, practical demonstrations, configuration support, and continuous knowledge sharing, the FSR helps local personnel develop deeper expertise.',
@@ -227,7 +227,7 @@ PAGE = {
             ],
         }),
         ('prose', {'title': X('Support Through Partnership', 'Поддержка через партнёрство', 'Hamkorlik orqali qo‘llab-quvvatlash'), 'soft': True, 'items': [
-            ('emphasis', X('S3 does not operate in isolation.', 'S3 не работает в одиночку.', 'S3 yakkalikda ishlamaydi.')),
+            ('p', X('S3 does not operate in isolation.', 'S3 не работает в одиночку.', 'S3 yakkalikda ishlamaydi.')),
             ('p', X('Our support model is strengthened by cooperation with our technology and integration partners, providing access to specialized knowledge when required.',
                     'Нашу модель поддержки усиливает сотрудничество с технологическими партнёрами и партнёрами по интеграции, открывающее доступ к специализированным знаниям, когда они нужны.',
                     'Qo‘llab-quvvatlash modelimiz texnologik va integratsiya bo‘yicha hamkorlarimiz bilan hamkorlik orqali mustahkamlanadi, bu esa zarur bo‘lganda ixtisoslashgan bilimlardan foydalanish imkonini beradi.')),
@@ -239,16 +239,16 @@ PAGE = {
                     'Bu uyg‘unlik buyurtmachilarga ham tezkor mahalliy yordam, ham xalqaro ekspertiza afzalliklarini beradi.')),
         ]}),
         ('prose', {'title': X('We Stay Engaged', 'Мы остаёмся рядом', 'Biz doim yoningizdamiz'), 'items': [
-            ('emphasis', X('Delivery is not the end of our involvement.', 'Поставка — не конец нашего участия.', 'Yetkazib berish ishtirokimizning oxiri emas.')),
+            ('p', X('Delivery is not the end of our involvement.', 'Поставка — не конец нашего участия.', 'Yetkazib berish ishtirokimizning oxiri emas.')),
             ('p', X('From initial deployment and training to day-to-day technical assistance, troubleshooting, knowledge transfer, system development, and future modernization, S3 can remain engaged throughout the operational lifecycle of the solutions we provide.',
                     'От первоначального развёртывания и обучения до повседневной технической помощи, устранения неисправностей, передачи знаний, развития системы и будущей модернизации — S3 может оставаться рядом на протяжении всего жизненного цикла эксплуатации предоставленных решений.',
                     'Dastlabki joriy etish va o‘qitishdan tortib kundalik texnik yordam, nosozliklarni bartaraf etish, bilim uzatish, tizimni rivojlantirish va kelgusidagi modernizatsiyagacha — S3 taqdim etgan yechimlarining butun foydalanish davri mobaynida ishtirok etishda davom etishi mumkin.')),
             ('p', X('Our goal is straightforward:', 'Наша цель проста:', 'Maqsadimiz oddiy:')),
-            ('emphasis', X('Keep systems effective. Develop local expertise. Support long-term capability.',
+            ('p', X('Keep systems effective. Develop local expertise. Support long-term capability.',
                            'Поддерживать эффективность систем. Развивать местную экспертизу. Обеспечивать долгосрочные возможности.',
                            'Tizimlar samaradorligini saqlash. Mahalliy ekspertizani rivojlantirish. Uzoq muddatli salohiyatni qo‘llab-quvvatlash.')),
         ]}),
-        ('closing', {'statement': BRAND_STATEMENT, 'lines': [
+        ('closing', {'style': 'statement', 'statement': BRAND_STATEMENT, 'lines': [
             X('Local Presence. International Expertise.', 'Местное присутствие. Международная экспертиза.', 'Mahalliy vakillik. Xalqaro ekspertiza.'),
         ], 'buttons': [
             (TRAINING, 'training.html', 'primary-link'),

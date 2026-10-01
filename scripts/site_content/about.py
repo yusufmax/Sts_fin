@@ -1,26 +1,32 @@
-from . import X, BRAND_STATEMENT
+from . import X, BRAND_STATEMENT, CONTACT_S3
 
 PAGE = {
     'slug': 'about.html',
     'title': X('About Us', 'О компании', 'Kompaniya haqida'),
     'image': 'engineering-workshop.webp',
     'hero': {
+        'buttons': [(CONTACT_S3, 'contact.html', 'primary-link')],
         'title': X('Who We Are', 'Кто мы', 'Biz kimmiz'),
         'lead': X('Strategic Security Systems (S3) is an Uzbekistan-based systems integrator established in 2024 to provide advanced technology solutions to government and defense customers.',
                   'Strategic Security Systems (S3) — системный интегратор из Узбекистана, основанный в 2024 году для предоставления передовых технологических решений государственным и оборонным заказчикам.',
                   'Strategic Security Systems (S3) — davlat va mudofaa sohasidagi buyurtmachilarga ilg‘or texnologik yechimlarni taqdim etish maqsadida 2024-yilda tashkil etilgan O‘zbekistondagi tizim integratori.'),
     },
     'blocks': [
-        ('continuation', {'items': [
+        ('intro', {'items': [
             ('p', X('We work in cooperation with leading international technology partners to bring combat-proven technologies to our customers and integrate them into complete solutions designed around real operational requirements.',
                     'Мы сотрудничаем с ведущими международными технологическими партнёрами, чтобы предоставлять заказчикам технологии, проверенные в боевых условиях, и интегрировать их в комплексные решения, построенные вокруг реальных операционных требований.',
                     'Biz yetakchi xalqaro texnologik hamkorlar bilan hamkorlikda jangovar sharoitda sinovdan o‘tgan texnologiyalarni buyurtmachilarimizga yetkazamiz va ularni real operatsion talablar asosida ishlab chiqilgan yaxlit yechimlarga integratsiya qilamiz.')),
             ('p', X('Our role goes beyond supplying equipment. We support our customers in identifying their requirements, selecting appropriate technologies, integrating new capabilities with existing systems and infrastructure, deploying solutions, developing personnel, and maintaining effective operation throughout the solution lifecycle.',
                     'Наша роль не ограничивается поставкой оборудования. Мы помогаем заказчикам определять требования, выбирать подходящие технологии, интегрировать новые возможности с существующими системами и инфраструктурой, развёртывать решения, развивать персонал и поддерживать эффективную эксплуатацию на протяжении всего жизненного цикла решения.',
                     'Bizning vazifamiz uskunalarni yetkazib berish bilan cheklanmaydi. Biz buyurtmachilarga talablarni aniqlash, mos texnologiyalarni tanlash, yangi imkoniyatlarni mavjud tizimlar va infratuzilma bilan integratsiya qilish, yechimlarni joriy etish, xodimlarni tayyorlash hamda yechimning butun hayotiy sikli davomida samarali ishlashini ta’minlashda yordam beramiz.')),
-            ('emphasis', X('Our objective is simple: to transform advanced technology into sustainable operational capability.',
+            ('p', X('Our objective is simple: to transform advanced technology into sustainable operational capability.',
                            'Наша цель проста: превращать передовые технологии в устойчивые операционные возможности.',
                            'Maqsadimiz oddiy: ilg‘or texnologiyalarni barqaror operatsion imkoniyatlarga aylantirish.')),
+        ]}),
+        ('facts', {'facts': [
+            ('2024', X('Established in Uzbekistan', 'Основана в Узбекистане', 'O‘zbekistonda tashkil etilgan')),
+            ('S3', X('Uzbekistan-based systems integrator', 'Системный интегратор из Узбекистана', 'O‘zbekistondagi tizim integratori')),
+            ('01', X('End-to-end approach, from requirements to lifecycle support', 'Сквозной подход: от требований до поддержки жизненного цикла', 'Yaxlit yondashuv: talablardan hayotiy sikl davomida qo‘llab-quvvatlashgacha')),
         ]}),
         ('prose', {'title': X('What We Do', 'Чем мы занимаемся', 'Biz nima qilamiz'), 'soft': True, 'items': [
             ('p', X('S3 specializes in the integration of secure, mission-critical technologies for demanding operational environments.',
@@ -153,7 +159,7 @@ PAGE = {
                   'Мы понимаем деликатный характер среды, в которой работают наши заказчики, и обращаемся с их информацией и требованиями с должной осторожностью и сдержанностью.',
                   'Buyurtmachilarimiz faoliyat yuritadigan muhitning nozik xususiyatini tushunamiz va ularning ma’lumotlari hamda talablariga tegishli ehtiyotkorlik va maxfiylik bilan munosabatda bo‘lamiz.')]),
         ]}),
-        ('closing', {'statement': BRAND_STATEMENT, 'lines': [
+        ('closing', {'statement': BRAND_STATEMENT, 'buttons': [(CONTACT_S3, 'contact.html', 'primary-link')], 'lines': [
             X('From requirements to integration.', 'От требований — к интеграции.', 'Talablardan — integratsiyagacha.'),
             X('From deployment to knowledge transfer.', 'От развёртывания — к передаче знаний.', 'Joriy etishdan — bilim uzatishgacha.'),
             X('From technology to operational capability.', 'От технологий — к операционным возможностям.', 'Texnologiyadan — operatsion imkoniyatgacha.'),

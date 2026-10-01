@@ -1,5 +1,8 @@
 from . import X, BRAND_STATEMENT, SYSTEMS_INTEGRATION
 
+LEARN_MORE = X('Learn More', 'Подробнее', 'Batafsil')
+DISCUSS = X('Discuss Your Requirements', 'Обсудить ваши требования', 'Talablaringizni muhokama qilish')
+
 AREAS = [
     {
         'id': 'secure-tactical-communications',
@@ -234,21 +237,22 @@ PAGE = {
     'title': X('Solutions', 'Решения', 'Yechimlar'),
     'image': 'radio-detail.webp',
     'hero': {
+        'buttons': [(DISCUSS, 'contact.html?interest=requirement', 'primary-link')],
         'title': X('Integrated Technologies for Mission-Critical Operations', 'Интегрированные технологии для критически важных операций', 'O‘ta muhim operatsiyalar uchun integratsiyalashgan texnologiyalar'),
         'lead': X('S3 provides integrated technology solutions designed to support secure communications, command and control, situational awareness, information exchange, coordination, and operational effectiveness.',
                   'S3 предоставляет интегрированные технологические решения для защищённой связи, командования и управления, ситуационной осведомлённости, обмена информацией, координации и повышения операционной эффективности.',
                   'S3 himoyalangan aloqa, qo‘mondonlik va boshqaruv, vaziyatdan xabardorlik, axborot almashinuvi, muvofiqlashtirish va operatsion samaradorlikni ta’minlashga mo‘ljallangan integratsiyalashgan texnologik yechimlarni taqdim etadi.'),
     },
     'blocks': [
-        ('continuation', {'items': [
+        ('cards', {'intro': [
             ('p', X('We do not approach technologies as isolated products. Working with our customers and technology partners, we combine appropriate systems, networks, applications, platforms, and infrastructure into solutions designed around specific operational requirements.',
                     'Мы не рассматриваем технологии как отдельные продукты. Вместе с заказчиками и технологическими партнёрами мы объединяем подходящие системы, сети, приложения, платформы и инфраструктуру в решения, построенные вокруг конкретных операционных требований.',
                     'Biz texnologiyalarga alohida mahsulotlar sifatida yondashmaymiz. Buyurtmachilarimiz va texnologik hamkorlarimiz bilan birgalikda mos tizimlar, tarmoqlar, ilovalar, platformalar va infratuzilmani aniq operatsion talablar asosida yaratilgan yechimlarga birlashtiramiz.')),
             ('p', X('Our portfolio includes both established S3 core capabilities and complementary technologies that can be integrated to create a complete operational solution.',
                     'Наш портфель включает как основные компетенции S3, так и дополняющие их технологии, которые можно интегрировать в законченное операционное решение.',
                     'Portfelimiz S3 ning asosiy imkoniyatlarini ham, yaxlit operatsion yechim yaratish uchun integratsiya qilinishi mumkin bo‘lgan qo‘shimcha texnologiyalarni ham o‘z ichiga oladi.')),
-        ]}),
-        ('anchors', {'links': [(area['id'], area['title']) for area in AREAS]}),
+        ],
+            'cards': [(area['title'], [area['subtitle']], (LEARN_MORE, '#' + area['id'])) for area in AREAS]}),
         ('details', {'rows': AREAS}),
         ('prose', {'title': X('One Integrated Approach', 'Единый интегрированный подход', 'Yagona integratsiyalashgan yondashuv'), 'items': [
             ('p', X('Individual technologies provide the greatest operational value when they work together.',
@@ -257,7 +261,7 @@ PAGE = {
             ('p', X('A secure radio network can transport C2 information. A tactical network can connect a command post with mobile users and platforms. ISR information can contribute to situational awareness. SATCOM can extend connectivity beyond the reach of terrestrial networks.',
                     'Защищённая радиосеть может передавать информацию C2. Тактическая сеть может связать командный пункт с мобильными пользователями и платформами. Информация ISR повышает ситуационную осведомлённость. SATCOM расширяет связь за пределы досягаемости наземных сетей.',
                     'Himoyalangan radiotarmoq C2 axborotini uzata oladi. Taktik tarmoq qo‘mondonlik punktini mobil foydalanuvchilar va platformalar bilan bog‘lay oladi. ISR axboroti vaziyatdan xabardorlikka hissa qo‘shadi. SATCOM aloqani yer usti tarmoqlari yeta olmaydigan joylargacha kengaytiradi.')),
-            ('emphasis', X('S3 brings these technologies together.', 'S3 объединяет эти технологии.', 'S3 bu texnologiyalarni birlashtiradi.')),
+            ('p', X('S3 brings these technologies together.', 'S3 объединяет эти технологии.', 'S3 bu texnologiyalarni birlashtiradi.')),
             ('p', X('Our role as a systems integrator is to determine how individual capabilities should connect, exchange information, and operate as part of a complete solution while considering the systems and infrastructure already available to the customer.',
                     'Наша роль как системного интегратора — определить, как отдельные возможности должны соединяться, обмениваться информацией и работать в составе законченного решения, с учётом систем и инфраструктуры, уже имеющихся у заказчика.',
                     'Tizim integratori sifatidagi vazifamiz — buyurtmachida allaqachon mavjud tizimlar va infratuzilmani hisobga olgan holda, alohida imkoniyatlar qanday ulanishi, axborot almashishi va yaxlit yechim tarkibida ishlashi kerakligini belgilash.')),
@@ -283,7 +287,7 @@ PAGE = {
                     'Buyurtmachilarimiz va texnologik hamkorlarimiz bilan birga ishlab, biz taqdim etayotgan texnologiyalar alohida mahsulot emas, balki samarali va barqaror operatsion imkoniyatga aylanishiga intilamiz.')),
         ]}),
         ('closing', {'statement': BRAND_STATEMENT, 'buttons': [
-            (X('Discuss Your Requirements', 'Обсудить ваши требования', 'Talablaringizni muhokama qilish'), 'contact.html?interest=requirement', 'primary-link'),
+            (DISCUSS, 'contact.html?interest=requirement', 'primary-link'),
             (SYSTEMS_INTEGRATION, 'systems-integration.html', 'text-link'),
         ]}),
     ],

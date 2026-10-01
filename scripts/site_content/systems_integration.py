@@ -11,8 +11,8 @@ PAGE = {
                   'Zamonaviy o‘ta muhim operatsiyalar ko‘plab texnologiyalar, tizimlar, tarmoqlar, platformalar va ilovalarning birgalikda ishonchli va xavfsiz ishlashiga bog‘liq.'),
     },
     'blocks': [
-        ('continuation', {'items': [
-            ('emphasis', X('Systems integration is at the core of what S3 does.', 'Системная интеграция — основа деятельности S3.', 'Tizim integratsiyasi — S3 faoliyatining asosi.')),
+        ('intro', {'items': [
+            ('p', X('Systems integration is at the core of what S3 does.', 'Системная интеграция — основа деятельности S3.', 'Tizim integratsiyasi — S3 faoliyatining asosi.')),
             ('p', X('We work with our customers and technology partners to bring individual technologies together into complete solutions designed around operational requirements, existing capabilities, infrastructure, and future development needs.',
                     'Вместе с заказчиками и технологическими партнёрами мы объединяем отдельные технологии в законченные решения, построенные с учётом операционных требований, существующих возможностей, инфраструктуры и планов дальнейшего развития.',
                     'Buyurtmachilarimiz va texnologik hamkorlarimiz bilan birgalikda alohida texnologiyalarni operatsion talablar, mavjud imkoniyatlar, infratuzilma va kelgusidagi rivojlanish ehtiyojlari asosida yaratilgan yaxlit yechimlarga birlashtiramiz.')),
@@ -30,7 +30,7 @@ PAGE = {
                 ('p', X('Organizations often already have significant investments in communications systems, networks, applications, platforms, infrastructure, and — equally importantly — personnel trained to operate and support them.',
                         'Организации зачастую уже вложили значительные средства в системы связи, сети, приложения, платформы, инфраструктуру и — что не менее важно — в персонал, обученный их эксплуатировать и поддерживать.',
                         'Tashkilotlar ko‘pincha aloqa tizimlari, tarmoqlar, ilovalar, platformalar, infratuzilma va — bundan kam muhim bo‘lmagan — ulardan foydalanish va ularni qo‘llab-quvvatlashga o‘qitilgan xodimlarga katta mablag‘ sarflagan bo‘ladi.')),
-                ('emphasis', X('Modernization does not necessarily mean replacing everything.', 'Модернизация не обязательно означает замену всего.', 'Modernizatsiya hamma narsani almashtirish degani emas.')),
+                ('p', X('Modernization does not necessarily mean replacing everything.', 'Модернизация не обязательно означает замену всего.', 'Modernizatsiya hamma narsani almashtirish degani emas.')),
                 ('p', X('Where technically feasible and operationally appropriate, S3 works to integrate new technologies and capabilities with the customer\'s existing systems, networks, platforms, and infrastructure.',
                         'Там, где это технически возможно и оправдано с операционной точки зрения, S3 интегрирует новые технологии и возможности с существующими системами, сетями, платформами и инфраструктурой заказчика.',
                         'Texnik jihatdan mumkin va operatsion jihatdan maqsadga muvofiq bo‘lgan hollarda S3 yangi texnologiyalar va imkoniyatlarni buyurtmachining mavjud tizimlari, tarmoqlari, platformalari va infratuzilmasi bilan integratsiya qiladi.')),
@@ -60,7 +60,7 @@ PAGE = {
                 ('p', X('For this reason, S3 combines systems integration with training, knowledge transfer, and lifecycle support, helping customers introduce new capabilities while building on the expertise they already have.',
                         'Поэтому S3 сочетает системную интеграцию с обучением, передачей знаний и поддержкой жизненного цикла, помогая заказчикам внедрять новые возможности, опираясь на уже имеющуюся экспертизу.',
                         'Shu sababli S3 tizim integratsiyasini o‘qitish, bilim uzatish va hayotiy sikl davomida qo‘llab-quvvatlash bilan uyg‘unlashtirib, buyurtmachilarga mavjud tajribasiga tayangan holda yangi imkoniyatlarni joriy etishda yordam beradi.')),
-                ('emphasis', X('Preserving what works. Integrating what is new. Building for what comes next.',
+                ('p', X('Preserving what works. Integrating what is new. Building for what comes next.',
                                'Сохраняем то, что работает. Интегрируем новое. Создаём основу для будущего.',
                                'Ishlayotganini saqlaymiz. Yangisini integratsiya qilamiz. Kelajak uchun asos yaratamiz.')),
             ],
@@ -138,7 +138,7 @@ PAGE = {
                     X('Bringing together communications, IT, networking, power, workstations, servers, displays, and other supporting technologies within command-post or deployable environments.', 'Объединение связи, ИТ, сетей, электропитания, рабочих мест, серверов, дисплеев и других вспомогательных технологий в среде командных пунктов или развёртываемых комплексов.', 'Qo‘mondonlik punktlari yoki joylashtiriladigan muhitda aloqa, AT, tarmoqlar, elektr ta’minoti, ish o‘rinlari, serverlar, displeylar va boshqa yordamchi texnologiyalarni birlashtirish.')]),
             ],
             'outro': [
-                ('emphasis', X('The objective is not connectivity for its own sake, but the reliable delivery of the right information to the right users and systems when it is needed.',
+                ('p', X('The objective is not connectivity for its own sake, but the reliable delivery of the right information to the right users and systems when it is needed.',
                                'Цель — не связь ради связи, а надёжная доставка нужной информации нужным пользователям и системам в нужный момент.',
                                'Maqsad — aloqaning o‘zi emas, balki kerakli axborotni kerakli foydalanuvchilar va tizimlarga kerakli vaqtda ishonchli yetkazish.')),
             ],
@@ -214,12 +214,12 @@ PAGE = {
             ('p', X('It also allows S3 to remain close to the customer during implementation and operation while providing access to international technical resources.',
                     'Он также позволяет S3 оставаться рядом с заказчиком на этапах внедрения и эксплуатации, обеспечивая доступ к международным техническим ресурсам.',
                     'Shuningdek, u S3 ga joriy etish va foydalanish bosqichlarida buyurtmachiga yaqin bo‘lish va xalqaro texnik resurslardan foydalanish imkonini beradi.')),
-            ('emphasis', X('The result is a combination of global technology and expertise with local integration and support.',
+            ('p', X('The result is a combination of global technology and expertise with local integration and support.',
                            'В результате мировые технологии и экспертиза сочетаются с местной интеграцией и поддержкой.',
                            'Natijada global texnologiyalar va ekspertiza mahalliy integratsiya va qo‘llab-quvvatlash bilan uyg‘unlashadi.')),
         ]}),
         ('prose', {'title': X('Integration Beyond Initial Deployment', 'Интеграция после первоначального развёртывания', 'Dastlabki joriy etishdan keyingi integratsiya'), 'soft': True, 'items': [
-            ('emphasis', X('Operational requirements change. Technologies evolve. New capabilities become available.',
+            ('p', X('Operational requirements change. Technologies evolve. New capabilities become available.',
                            'Операционные требования меняются. Технологии развиваются. Появляются новые возможности.',
                            'Operatsion talablar o‘zgaradi. Texnologiyalar rivojlanadi. Yangi imkoniyatlar paydo bo‘ladi.')),
             ('p', X('For this reason, systems integration should consider not only today\'s requirement but also what may be needed tomorrow.',
@@ -233,7 +233,7 @@ PAGE = {
                     'Bu alohida texnologik loyihalardan o‘zaro bog‘langan, mos va barqaror texnologik ekotizimga o‘tishga yordam beradi.')),
         ]}),
         ('prose', {'title': X('Integration Supported by Knowledge', 'Интеграция, подкреплённая знаниями', 'Bilimga tayangan integratsiya'), 'items': [
-            ('emphasis', X('Technology integration and human capability must develop together.',
+            ('p', X('Technology integration and human capability must develop together.',
                            'Интеграция технологий и развитие людей должны идти рука об руку.',
                            'Texnologiyalar integratsiyasi va inson salohiyati birgalikda rivojlanishi kerak.')),
             ('p', X('Even the most advanced integrated system cannot deliver its full value if personnel do not understand how to operate, administer, maintain, and support it.',
@@ -265,7 +265,7 @@ PAGE = {
                     'Bu yondashuv buyurtmachilarga o‘z tizimlarining samaradorligini saqlash va mahalliy texnik tajribani doimiy rivojlantirishda yordam beradi.')),
         ]}),
         ('prose', {'title': X('One Integrated Approach', 'Единый интегрированный подход', 'Yagona integratsiyalashgan yondashuv'), 'items': [
-            ('emphasis', X('S3 brings together technology, integration, people, and support.',
+            ('p', X('S3 brings together technology, integration, people, and support.',
                            'S3 объединяет технологии, интеграцию, людей и поддержку.',
                            'S3 texnologiya, integratsiya, odamlar va qo‘llab-quvvatlashni birlashtiradi.')),
             ('p', X('From understanding the initial requirement to integrating new capabilities with existing systems, training customer personnel, and supporting deployed solutions, we provide a coordinated approach throughout the solution lifecycle.',
@@ -276,7 +276,7 @@ PAGE = {
                     'Мы помогаем заказчикам модернизироваться практично и устойчиво — сохраняя то, что работает, интегрируя новое и создавая основу для будущего.',
                     'Bu — buyurtmachilarga amaliy va barqaror tarzda modernizatsiya qilishda yordam berish: ishlayotganini saqlash, yangisini integratsiya qilish va kelajak uchun asos yaratish.')),
         ]}),
-        ('closing', {'statement': BRAND_STATEMENT, 'lines': [
+        ('closing', {'style': 'statement', 'statement': BRAND_STATEMENT, 'lines': [
             X('From Technology to Operational Capability', 'От технологий — к операционным возможностям', 'Texnologiyadan — operatsion imkoniyatgacha'),
         ], 'buttons': [
             (EXPLORE_SOLUTIONS, 'solutions.html', 'primary-link'),

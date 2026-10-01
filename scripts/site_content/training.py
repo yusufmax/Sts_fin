@@ -11,8 +11,8 @@ PAGE = {
                   'Ilg‘or texnologiya o‘z qiymatini faqat xodimlarda undan samarali foydalanish va uni qo‘llab-quvvatlash uchun zarur bilim, amaliy ko‘nikma va ishonch bo‘lgandagina to‘liq namoyon etadi.'),
     },
     'blocks': [
-        ('continuation', {'items': [
-            ('emphasis', X('For this reason, training and knowledge transfer are integral parts of the S3 approach.',
+        ('intro', {'items': [
+            ('p', X('For this reason, training and knowledge transfer are integral parts of the S3 approach.',
                            'Поэтому обучение и передача знаний — неотъемлемые части подхода S3.',
                            'Shu sababli o‘qitish va bilim uzatish S3 yondashuvining ajralmas qismlaridir.')),
             ('p', X('S3 provides structured training programs for the technologies and integrated solutions we deliver. Working in cooperation with our technology partners, we combine product expertise, systems knowledge, practical exercises, and operational experience to help customers develop sustainable internal capabilities.',
@@ -231,12 +231,12 @@ PAGE = {
             ('p', X('At S3, training is not treated as an optional activity added after equipment delivery.',
                     'В S3 обучение не считается необязательным дополнением к поставке оборудования.',
                     'S3 da o‘qitish uskunalar yetkazib berilgandan keyin qo‘shiladigan ixtiyoriy faoliyat sifatida qaralmaydi.')),
-            ('emphasis', X('It is part of the solution.', 'Оно — часть решения.', 'U yechimning bir qismidir.')),
+            ('p', X('It is part of the solution.', 'Оно — часть решения.', 'U yechimning bir qismidir.')),
             ('p', X('By combining advanced technology with structured training, hands-on practice, Train-the-Trainer programs, knowledge transfer, and continued support, we help customers turn technology into sustainable operational capability.',
                     'Сочетая передовые технологии со структурированным обучением, практикой, программами подготовки инструкторов, передачей знаний и постоянной поддержкой, мы помогаем заказчикам превращать технологии в устойчивые операционные возможности.',
                     'Ilg‘or texnologiyalarni tizimli o‘qitish, amaliy mashg‘ulotlar, trenerlarni tayyorlash dasturlari, bilim uzatish va doimiy qo‘llab-quvvatlash bilan uyg‘unlashtirib, buyurtmachilarga texnologiyani barqaror operatsion imkoniyatga aylantirishda yordam beramiz.')),
         ]}),
-        ('closing', {'statement': BRAND_STATEMENT, 'lines': [
+        ('closing', {'style': 'statement', 'statement': BRAND_STATEMENT, 'lines': [
             X('From Technology to Knowledge. From Knowledge to Capability.', 'От технологий — к знаниям. От знаний — к возможностям.', 'Texnologiyadan — bilimga. Bilimdan — imkoniyatga.'),
         ], 'buttons': [
             (FSR_SUPPORT, 'support.html', 'primary-link'),
