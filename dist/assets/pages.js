@@ -29,25 +29,65 @@
   }else setLang(['en','ru','uz'].includes(localStorage.getItem('s3-language'))?localStorage.getItem('s3-language'):'en');
   const form=document.querySelector('#enquiry');
   if(form){
+    const text={
+      required:{en:'Please fill in this field.',ru:'Заполните это поле.',uz:'Iltimos, ushbu maydonni to‘ldiring.'},
+      choose:{en:'Please choose a topic.',ru:'Выберите тему обращения.',uz:'Iltimos, murojaat mavzusini tanlang.'},
+      email:{en:'Enter a valid email address.',ru:'Введите корректный адрес электронной почты.',uz:'To‘g‘ri elektron pochta manzilini kiriting.'},
+      short:{en:'Please enter at least {n} characters.',ru:'Введите не менее {n} символов.',uz:'Kamida {n} ta belgi kiriting.'},
+      fix:{en:'Please complete or correct the highlighted fields.',ru:'Заполните или исправьте отмеченные поля.',uz:'Iltimos, belgilangan maydonlarni to‘ldiring yoki to‘g‘rilang.'},
+      sending:{en:'Sending your message…',ru:'Отправляем сообщение…',uz:'Xabar yuborilmoqda…'},
+      sent:{en:'Thank you for contacting S3. Your message has been sent successfully.',ru:'Спасибо за обращение в S3. Ваше сообщение успешно отправлено.',uz:'S3 ga murojaat qilganingiz uchun rahmat. Xabaringiz muvaffaqiyatli yuborildi.'},
+      rate:{en:'Too many messages were sent from this connection. Please try again in a few minutes.',ru:'С этого подключения отправлено слишком много сообщений. Попробуйте ещё раз через несколько минут.',uz:'Bu ulanishdan juda ko‘p xabar yuborildi. Bir necha daqiqadan so‘ng qayta urinib ko‘ring.'},
+      failed:{en:'Your message could not be sent. Please try again or email info@stsec.uz.',ru:'Не удалось отправить сообщение. Попробуйте ещё раз или напишите на info@stsec.uz.',uz:'Xabar yuborilmadi. Qayta urinib ko‘ring yoki info@stsec.uz manziliga yozing.'},
+    };
+    const say=key=>text[key][lang]||text[key].en;
     const requested=new URLSearchParams(location.search).get('interest');
     if(requested){const select=form.elements.interest;if([...select.options].some(o=>o.value===requested))select.value=requested}
+    // Messages are shown next to each field instead of the browser's single tooltip.
+    form.noValidate=true;
+    const fields=[...form.querySelectorAll('.form-field input,.form-field select,.form-field textarea')];
+    const status=form.querySelector('.form-status');
+    const setStatus=(message,kind)=>{status.textContent=message;status.className=`form-status${kind?` is-${kind}`:''}`};
+    const problem=field=>{
+      const value=field.value.trim(),validity=field.validity;
+      if(field.required&&!value)return field.tagName==='SELECT'?say('choose'):say('required');
+      if(validity.typeMismatch)return say('email');
+      if(field.minLength>0&&value&&value.length<field.minLength)return say('short').replace('{n}',field.minLength);
+      return '';
+    };
+    const showError=(field,message)=>{
+      const label=field.closest('.form-field');
+      let note=label.querySelector('.field-error');
+      label.classList.toggle('is-invalid',Boolean(message));
+      if(!message){field.removeAttribute('aria-invalid');note?.remove();return}
+      field.setAttribute('aria-invalid','true');
+      if(!note){note=document.createElement('span');note.className='field-error';note.id=`${field.name}-error`;label.append(note);field.setAttribute('aria-describedby',note.id)}
+      note.textContent=message;
+    };
+    fields.forEach(field=>field.addEventListener(field.tagName==='SELECT'?'change':'input',()=>{if(field.closest('.is-invalid'))showError(field,problem(field))}));
     form.addEventListener('submit',async e=>{
       e.preventDefault();
-      if(!form.reportValidity())return;
+      const invalid=fields.filter(field=>{const message=problem(field);showError(field,message);return message});
+      if(invalid.length){setStatus(say('fix'),'error');invalid[0].focus();return}
       const button=form.querySelector('button[type="submit"]');
-      const status=form.querySelector('.form-status');
       button.disabled=true;
-      status.textContent=lang==='ru'?'Отправляем запрос…':lang==='uz'?'Murojaat yuborilmoqda…':'Sending your enquiry…';
+      setStatus(say('sending'));
       const payload=Object.fromEntries(new FormData(form).entries());
       payload.locale=lang;
       try{
         const response=await fetch('/api/contact',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
-        const result=await response.json();
+        const result=await response.json().catch(()=>({}));
+        if(response.status===400&&result.fields){
+          const rejected=Object.entries(result.fields).map(([name,code])=>{const field=form.elements[name];if(field)showError(field,code==='invalid'&&name==='email'?say('email'):field.tagName==='SELECT'?say('choose'):say('required'));return field}).filter(Boolean);
+          setStatus(say('fix'),'error');rejected[0]?.focus();return;
+        }
+        if(response.status===429){setStatus(say('rate'),'error');return}
         if(!response.ok)throw new Error(result.error||'delivery_failed');
-        status.textContent=lang==='ru'?'Запрос получен. Наша команда свяжется с вами.':lang==='uz'?'Murojaat qabul qilindi. Jamoamiz siz bilan bog‘lanadi.':'Enquiry received. Our team will be in touch.';
         form.reset();
+        fields.forEach(field=>showError(field,''));
+        setStatus(say('sent'),'success');
       }catch{
-        status.textContent=lang==='ru'?'Не удалось отправить запрос. Попробуйте ещё раз или напишите на info@stsec.uz.':lang==='uz'?'Murojaat yuborilmadi. Qayta urinib ko‘ring yoki info@stsec.uz manziliga yozing.':'Could not send your enquiry. Please retry or email info@stsec.uz.';
+        setStatus(say('failed'),'error');
       }finally{button.disabled=false}
     });
   }

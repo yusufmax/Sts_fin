@@ -116,11 +116,11 @@ body+='</div><p class="direct-email">'+t('Prefer email?','Удобнее нап�
 body+='''<form id="enquiry" class="enquiry-form"><div class="form-head"><span class="card-no">01 / '''+t('ENQUIRY','ЗАПРОС')+'''</span>'''+t('Contact our team.','Напишите нашей команде.','h2')+'''</div>'''
 fields=[('name','Your name','Ваше имя','text','name'),('organization','Organization','Организация','text','organization'),('email','Work email','Рабочая почта','email','email'),('phone','Phone (optional)','Телефон (необязательно)','tel','tel')]
 for name,en,ru,typ,auto in fields:
-    required='' if name=='phone' else 'required'
+    required='' if name=='phone' else 'required minlength="2"' if name in ('name','organization') else 'required'
     body+=f'<label class="form-field">{t(en,ru)}<input name="{name}" type="{typ}" autocomplete="{auto}" {required}></label>'
 body+='<label class="form-field">'+t('Area of interest','Интересующее направление')+f'<select name="interest" required><option value="" disabled selected data-ru="Выберите тему обращения" data-uz="{escape(UZ["Select an enquiry type"], quote=True)}">Select an enquiry type</option>'
 for key,en,ru in options: body+=f'<option value="{key}" data-ru="{escape(ru, quote=True)}" data-uz="{escape(UZ[en], quote=True)}">{en}</option>'
-body+='</select></label><label class="form-field">'+t('Brief description of the requirement','Краткое описание задачи')+'<textarea name="message" rows="5" minlength="10" required></textarea></label><label class="form-trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><button class="primary-link" type="submit">'+t('Send enquiry','Отправить запрос')+' <span aria-hidden="true">↗</span></button><p class="form-note">'+t('Your enquiry is sent securely to our team.','Ваш запрос будет безопасно отправлен нашей команде.')+'</p><p class="form-status" role="status" aria-live="polite"></p></form></div></section>'
+body+='</select></label><label class="form-field">'+t('Brief description of the requirement','Краткое описание задачи')+'<textarea name="message" rows="5" minlength="10" required></textarea></label><label class="form-trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label><button class="primary-link" type="submit">'+t('Submit','Отправить')+' <span aria-hidden="true">↗</span></button><p class="form-note">'+t('Your enquiry is sent securely to our team.','Ваш запрос будет безопасно отправлен нашей команде.')+'</p><p class="form-status" role="status" aria-live="polite"></p></form></div></section>'
 pages['contact.html']=shell('contact.html','Contact','Контакты','Contact S3 about a technology requirement, consultation, partnership, training or technical support.',body)
 
 

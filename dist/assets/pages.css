@@ -24,3 +24,7 @@
 .partner-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:767px){.partner-grid.two{grid-template-columns:1fr}}
 .fact-grid strong [data-cms-copy]{display:inline;margin:0;font:inherit;letter-spacing:inherit;text-transform:none;color:inherit}
+.form-field.is-invalid input,.form-field.is-invalid select,.form-field.is-invalid textarea{border-color:#ff9c8c;box-shadow:0 0 0 2px rgba(255,156,140,.14)}
+.field-error{display:block;margin-top:8px;color:#ffb8ab;font-size:12px;font-weight:600;letter-spacing:0;text-transform:none}
+.form-status.is-success{color:#d7ed62}
+.form-status.is-error{color:#ffb8ab}
