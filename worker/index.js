@@ -68,6 +68,10 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const cleanText = (value, max = 12000) => String(value ?? "").trim().slice(0, max);
 const pathFor = (lang, slug) => `/${lang}/${slug === "index.html" ? "" : slug}`;
+function publicOrigin(request) {
+  const url = new URL(request.url);
+  return url.protocol === "http:" && request.headers.get("x-forwarded-proto") === "https" ? `https://${url.host}` : url.origin;
+}
 const validSlug = slug => !RETIRED_SLUGS.has(slug) && (/^[a-z0-9][a-z0-9-]{0,59}\.html$/.test(slug) || slug === "index.html");
 const isBuiltin = slug => Object.hasOwn(TEMPLATE_INFO, slug);
 const noStore = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
@@ -481,7 +485,7 @@ function renderArticlePage(request, article, lang, settings) {
   const category = articleText(article, lang, "category") || ({ en: "News", ru: "Новости", uz: "Yangiliklar" }[lang]);
   const body = articleText(article, lang, "bodyHtml");
   const image = article.data.image ? `<div class="subhero-media"><img src="${esc(article.data.image)}" alt="${esc(articleText(article, lang, "alt"))}"></div>` : "";
-  const path = articleLink(lang, article.slug), origin = new URL(request.url).origin;
+  const path = articleLink(lang, article.slug), origin = publicOrigin(request);
   const back = { en: "All news & publications", ru: "Все новости и публикации", uz: "Barcha yangiliklar va maqolalar" }[lang];
   const main = `<main class="subpage article-page"><section class="subhero section-pad"><div class="wrap subhero-grid"><div class="subhero-copy"><div class="kicker">${esc(category)} · <time datetime="${esc(article.data.date)}">${esc(article.data.date)}</time></div><h1 class="subhero-title">${esc(title)}</h1><p class="subhero-lead">${esc(summary)}</p></div>${image}</div></section><section class="content-section section-pad"><div class="wrap article-layout"><a class="text-link" href="/${lang}/news.html">← ${back}</a><div class="article-body">${body}</div></div></section></main>`;
   const template = STATIC["/news.html"].text.replace(/<main class="subpage">[\s\S]*?<\/main>/, main);
@@ -525,7 +529,7 @@ function localizedMetadata(page, slug, lang) {
 async function renderHtml(request, template, slug, lang, page, settings, articles = []) {
   const info = TEMPLATE_INFO[slug];
   const metadata = localizedMetadata(page, slug, lang);
-  const origin = new URL(request.url).origin;
+  const origin = publicOrigin(request);
   const canonical = `${origin}${pathFor(lang, slug)}`;
   let fieldIndex = 0, imageIndex = 0, sectionIndex = 0, linkIndex = 0, cardIndex = 0;
   const hidden = new Set(page?.data?.hiddenSections || []);
@@ -925,7 +929,7 @@ async function sitemap(request, env) {
     const draft = new Set(rows.results.filter(row => row.status !== "published").map(row => row.slug));
     slugs = [...slugs.filter(slug => !draft.has(slug)), ...rows.results.filter(row => !isBuiltin(row.slug) && !RETIRED_SLUGS.has(row.slug) && row.status === "published").map(row => row.slug)];
   } catch { /* Built-in pages remain indexable during a temporary database outage. */ }
-  const origin = new URL(request.url).origin;
+  const origin = publicOrigin(request);
   const articles = await publishedArticles(env, 500);
   const items = slugs.flatMap(slug => LANGS.map(lang => `<url><loc>${esc(origin + pathFor(lang, slug))}</loc></url>`)).join("") + articles.flatMap(article => LANGS.map(lang => `<url><loc>${esc(origin + articleLink(lang, article.slug))}</loc></url>`)).join("");
   return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${items}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=600" } });
@@ -934,7 +938,7 @@ async function sitemap(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url), route = decodeURIComponent(url.pathname);
-    if (route === "/robots.txt") return new Response(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${url.origin}/sitemap.xml\n`, { headers: { "content-type": "text/plain; charset=utf-8" } });
+    if (route === "/robots.txt") return new Response(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${publicOrigin(request)}/sitemap.xml\n`, { headers: { "content-type": "text/plain; charset=utf-8" } });
     if (route === "/sitemap.xml") return sitemap(request, env);
     if (route === "/api/contact") return contact(request, env);
     if (route === "/api/site-settings") return siteSettings(request, env);
