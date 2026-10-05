@@ -24,7 +24,7 @@ PAGE = {
                            'Bu ilg‘or texnologiyalarni barqaror operatsion imkoniyatlarga aylantirishga mo‘ljallangan hamkorlik modelidir.')),
         ]}),
         ('logos', {'partners': [
-            {'name': 'L3Harris Technologies', 'logo': 'l3harris-logo.svg', 'url': 'https://www.l3harris.com/',
+            {'name': 'L3Harris Technologies', 'logo': 'l3harris-logo-dark.svg', 'url': 'https://www.l3harris.com/',
              'label': X('Combat-Proven Technology for Mission-Critical Operations', 'Проверенные в боевых условиях технологии для критически важных операций', 'O‘ta muhim operatsiyalar uchun jangovar sharoitda sinovdan o‘tgan texnologiyalar'),
              'link': X('Visit L3Harris Technologies', 'Сайт L3Harris Technologies', 'L3Harris Technologies saytiga o‘tish')},
             {'name': 'Digital Technologies (DTECH)', 'logo': 'dtech-logo-horizontal.svg', 'url': 'https://www.dtech.ge/en/', 'light': True,
