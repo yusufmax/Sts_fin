@@ -30,6 +30,12 @@ PAGE = {
             {'name': 'Digital Technologies (DTECH)', 'logo': 'dtech-logo-horizontal.svg', 'url': 'https://www.dtech.ge/en/', 'light': True,
              'label': X('Integration Experience. Technical Expertise. Regional Cooperation.', 'Опыт интеграции. Техническая экспертиза. Региональное сотрудничество.', 'Integratsiya tajribasi. Texnik ekspertiza. Mintaqaviy hamkorlik.'),
              'link': X('Visit DTECH', 'Сайт DTECH', 'DTECH saytiga o‘tish')},
+            {'name': 'BuckEye Cam', 'logo': 'buckeye-logo-dark.svg', 'url': 'https://www.buckeyecam.com/',
+             'label': X('Wireless observation technology', 'Технологии беспроводного наблюдения', 'Simsiz kuzatuv texnologiyalari'),
+             'link': X('Visit BuckEye Cam', 'Сайт BuckEye Cam', 'BuckEye Cam saytiga o‘tish')},
+            {'name': 'N-ear', 'logo': 'near-logo-dark.svg', 'url': 'https://n-ear.com/',
+             'label': X('Professional audio solutions', 'Профессиональные аудиорешения', 'Professional audio yechimlar'),
+             'link': X('Visit N-ear', 'Сайт N-ear', 'N-ear saytiga o‘tish')},
         ]}),
         ('prose', {'title': X('Our Partnership Approach', 'Наш подход к партнёрству', 'Hamkorlikka yondashuvimiz'), 'soft': True, 'items': [
             ('p', X('S3 develops partnerships with technology manufacturers and organizations whose products, expertise, and capabilities complement our systems integration portfolio.',

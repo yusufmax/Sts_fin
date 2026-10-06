@@ -205,7 +205,7 @@ def render_page(page):
             for partner in block['partners']:
                 light = ' light' if partner.get('light') else ''
                 cards += f'<article class="partner-card"><div class="partner-card-logo{light}"><img src="assets/{partner["logo"]}" alt="{escape(partner["name"], quote=True)}"></div><div>{tx(partner["label"], "span", "card-no")}<h3>{partner["name"]}</h3>{button(partner["link"], partner["url"], "card-link")}</div></article>'
-            body += f'<section class="content-section{soft} section-pad"><div class="wrap">{numbered_head(number, block.get("title"))}<div class="partner-grid two">{cards}</div></div></section>'
+            body += f'<section class="content-section{soft} section-pad"><div class="wrap">{numbered_head(number, block.get("title"))}<div class="partner-grid">{cards}</div></div></section>'
         elif kind == 'closing':
             lines = ''.join(tx(line, 'p', 'section-intro') for line in block.get('lines', []))
             actions = ''.join(button(*item) for item in block.get('buttons', []))
